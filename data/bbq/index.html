@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1216">
+<title>BBQ controller</title>
+<!-- everything is served by the ESP32 itself, so the page also works in soft-AP mode without internet -->
+<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></symbol>
+  <symbol id="i-food" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 3 2h2Zm0 0v7"/></symbol>
+  <symbol id="i-fan" viewBox="0 0 24 24"><path d="M10.83 16.38a6.08 6.08 0 0 1-8.62-7l5.41 1.45a6.08 6.08 0 0 1 7-8.62l-1.45 5.41a6.08 6.08 0 0 1 8.62 7l-5.41-1.45a6.08 6.08 0 0 1-7 8.62l1.45-5.41Z"/><path d="M12 12v.01"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+  <symbol id="i-probes" viewBox="0 0 24 24"><path d="M6 3v12M12 3v12M18 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="12" cy="18" r="3"/><circle cx="18" cy="18" r="3"/></symbol>
+</svg>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="logo"><svg class="i"><use href="#i-flame"/></svg></div>
+    <div style="min-width:0">
+      <h1>BBQ controller</h1>
+      <div class="sub"><span id="date-part">&nbsp;</span> · <span id="time-part"></span></div>
+    </div>
+    <div class="spacer"></div>
+    <span id="conn-status" class="pill off">offline</span>
+    <button class="icon-btn hidden" id="alarm-btn" title="Stop alarm" onclick="stopAllAlarms()"><svg class="i"><use href="#i-bell-off"/></svg></button>
+    <button class="icon-btn" title="Settings" onclick="openSheet('settingsSheet')"><svg class="i"><use href="#i-sliders"/></svg></button>
+  </header>
+
+  <div class="banner" id="alarm-banner">
+    <svg class="i"><use href="#i-bell"/></svg>
+    <span id="alarm-text">Alarm</span>
+    <button class="btn danger" onclick="stopAllAlarms()">Stop</button>
+  </div>
+
+  <div class="grid">
+
+    <!-- BBQ probe -->
+    <section class="card">
+      <h2><svg class="i sm"><use href="#i-thermo"/></svg> BBQ
+        <button class="icon-btn right" title="BBQ settings" onclick="openSheet('bbqSheet')"><svg class="i sm"><use href="#i-edit"/></svg></button>
+      </h2>
+      <div class="reading"><span class="value" id="temperature1">--</span><span class="unit">°C</span></div>
+      <div class="meta">
+        <span>Target <b><span id="targetTemperature1">--</span>°</b></span>
+        <span>Cold −<b id="offsetFromTargetTempMin">--</b>°</span>
+        <span>Hot +<b id="offsetFromTargetTempMax">--</b>°</span>
+        <span>Alarm after <b id="alarm1">--</b></span>
+      </div>
+      <div class="chips">
+        <label class="chip" title="Alarm when the target temperature is reached"><input type="checkbox" id="1J1" onclick="updateButton('1J1')"><svg class="i sm"><use href="#i-bell"/></svg>At target</label>
+        <label class="chip" title="Start the BBQ timer when the target temperature is reached"><input type="checkbox" id="1D1" onclick="updateButton('1D1')"><svg class="i sm"><use href="#i-timer"/></svg>Timer at target</label>
+        <label class="chip" title="Alarm when colder than target − cold offset"><input type="checkbox" id="1M2" onclick="updateButton('1M2')">Too cold</label>
+        <label class="chip" title="Alarm when hotter than target + hot offset"><input type="checkbox" id="1M1" onclick="updateButton('1M1')">Too hot</label>
+        <label class="chip" title="Alarm when the BBQ timer passes the alarm time"><input type="checkbox" id="1G1" onclick="updateButton('1G1')"><svg class="i sm"><use href="#i-bell"/></svg>Timer alarm</label>
+      </div>
+    </section>
+
+    <!-- Food probe -->
+    <section class="card">
+      <h2><svg class="i sm"><use href="#i-food"/></svg> Food
+        <button class="icon-btn right" title="Food settings" onclick="openSheet('foodSheet')"><svg class="i sm"><use href="#i-edit"/></svg></button>
+      </h2>
+      <div class="reading"><span class="value" id="temperature2">--</span><span class="unit">°C</span></div>
+      <div class="meta">
+        <span>Target <b><span id="targetTemperature2">--</span>°</b></span>
+        <span>Alarm after <b id="alarm2">--</b></span>
+      </div>
+      <div class="chips">
+        <label class="chip" title="Alarm when the target temperature is reached"><input type="checkbox" id="1J2" onclick="updateButton('1J2')"><svg class="i sm"><use href="#i-bell"/></svg>At target</label>
+        <label class="chip" title="Start the food timer when the target temperature is reached"><input type="checkbox" id="1D2" onclick="updateButton('1D2')"><svg class="i sm"><use href="#i-timer"/></svg>Timer at target</label>
+        <label class="chip" title="Alarm when the food timer passes the alarm time"><input type="checkbox" id="1G2" onclick="updateButton('1G2')"><svg class="i sm"><use href="#i-bell"/></svg>Timer alarm</label>
+      </div>
+    </section>
+
+    <!-- Fan -->
+    <section class="card">
+      <h2><svg class="i sm"><use href="#i-fan"/></svg> Fan <span class="right muted" id="fan-mode">auto</span></h2>
+      <div class="reading"><span class="value" id="fanSpeed">--</span><span class="unit">%</span></div>
+      <div class="bar"><i id="fan-bar"></i></div>
+      <div class="row" style="margin-top:8px">
+        <div class="label">Fan on</div>
+        <label class="switch"><input type="checkbox" id="1L1" onclick="updateButton('1L1')"><span></span></label>
+      </div>
+      <div class="row">
+        <div class="label">Manual control<small>Fixed speed instead of following the target</small></div>
+        <label class="switch"><input type="checkbox" id="1T1" onclick="updateButton('1T1')"><span></span></label>
+      </div>
+      <div class="row">
+        <div class="label">Manual speed</div>
+        <span class="now" id="slider-value">50%</span>
+      </div>
+      <input id="1Y1" type="range" min="0" max="255" step="1" value="128" oninput="showSliderValue(this.value)" onchange="updateSlider('1Y1', this.value)">
+    </section>
+
+    <!-- Timers -->
+    <section class="card">
+      <h2><svg class="i sm"><use href="#i-timer"/></svg> Timers</h2>
+      <div class="row">
+        <div class="label">BBQ timer<small id="BBQcounter-s">&nbsp;</small></div>
+        <span class="reading"><span class="value" style="font-size:1.6rem" id="BBQcounter">0:00</span></span>
+        <label class="switch" title="Run BBQ timer"><input type="checkbox" id="1C1" onclick="updateButton('1C1')"><span></span></label>
+      </div>
+      <div class="row">
+        <div class="label">Food timer<small id="Foodcounter-s">&nbsp;</small></div>
+        <span class="reading"><span class="value" style="font-size:1.6rem" id="Foodcounter">0:00</span></span>
+        <label class="switch" title="Run food timer"><input type="checkbox" id="1C2" onclick="updateButton('1C2')"><span></span></label>
+      </div>
+      <div class="row">
+        <div class="label">Countdown<small>Beeps when it reaches zero</small></div>
+        <span class="reading"><span class="value" style="font-size:1.6rem" id="timer">0:00</span></span>
+      </div>
+      <div class="field">
+        <input type="number" inputmode="numeric" placeholder="seconds" id="B1">
+        <button class="btn" onclick="updateTemp('1B1')">Start</button>
+      </div>
+    </section>
+
+    <!-- probes 3-5 (shown when more than 2 probes are configured) -->
+    <section class="card hidden" id="more-probes">
+      <h2><svg class="i sm"><use href="#i-probes"/></svg> More probes</h2>
+      <div class="row"><div class="label">Probe 3</div><span class="now"><b id="temperature3">--</b> °C</span></div>
+      <div class="row"><div class="label">Probe 4</div><span class="now"><b id="temperature4">--</b> °C</span></div>
+      <div class="row"><div class="label">Probe 5</div><span class="now"><b id="temperature5">--</b> °C</span></div>
+    </section>
+
+  </div>
+
+  <section class="card chart-card" style="margin-top:12px">
+    <h2 style="padding:8px 8px 0"><svg class="i sm"><use href="#i-chart"/></svg> Temperature history</h2>
+    <div id="chart-temperature"></div>
+  </section>
+
+</div>
+
+<!-- BBQ settings -->
+<div class="sheet" id="bbqSheet" role="dialog" aria-label="BBQ settings">
+  <div class="grab"></div>
+  <header><h3>BBQ probe</h3><button class="icon-btn" onclick="closeSheets()"><svg class="i"><use href="#i-x"/></svg></button></header>
+  <div class="form-grid">
+    <label>Target temperature (°C)
+      <div class="field"><input type="number" inputmode="numeric" id="A1" placeholder="e.g. 110"><button class="btn" onclick="updateTemp('1A1')">Save</button></div>
+    </label>
+    <label>Cold offset (°C) — fan dims from full speed over this range below the target
+      <div class="field"><input type="number" inputmode="numeric" id="K2" placeholder="e.g. 30"><button class="btn" onclick="updateTemp('1K2')">Save</button></div>
+    </label>
+    <label>Hot offset (°C) — "too hot" alarm above target + offset
+      <div class="field"><input type="number" inputmode="numeric" id="K1" placeholder="e.g. 10"><button class="btn" onclick="updateTemp('1K1')">Save</button></div>
+    </label>
+    <label>Timer alarm after (seconds)
+      <div class="field"><input type="number" inputmode="numeric" id="F1" placeholder="e.g. 3600"><button class="btn" onclick="updateTemp('1F1')">Save</button></div>
+    </label>
+  </div>
+</div>
+
+<!-- Food settings -->
+<div class="sheet" id="foodSheet" role="dialog" aria-label="Food settings">
+  <div class="grab"></div>
+  <header><h3>Food probe</h3><button class="icon-btn" onclick="closeSheets()"><svg class="i"><use href="#i-x"/></svg></button></header>
+  <div class="form-grid">
+    <label>Target temperature (°C)
+      <div class="field"><input type="number" inputmode="numeric" id="A2" placeholder="e.g. 63"><button class="btn" onclick="updateTemp('1A2')">Save</button></div>
+    </label>
+    <label>Timer alarm after (seconds)
+      <div class="field"><input type="number" inputmode="numeric" id="F2" placeholder="e.g. 1800"><button class="btn" onclick="updateTemp('1F2')">Save</button></div>
+    </label>
+  </div>
+</div>
+
+<!-- System + calibration settings -->
+<div class="sheet" id="settingsSheet" role="dialog" aria-label="Settings">
+  <div class="grab"></div>
+  <header><h3>Settings</h3><button class="icon-btn" onclick="closeSheets()"><svg class="i"><use href="#i-x"/></svg></button></header>
+  <div class="tabs">
+    <button class="active" data-panel="panel-system" onclick="showPanel(this)">System</button>
+    <button data-panel="panel-cal" onclick="showPanel(this)">Calibration</button>
+    <button data-panel="panel-wifi" onclick="showPanel(this)">Wi-Fi</button>
+  </div>
+
+  <div class="panel active" id="panel-system">
+    <div class="form-grid">
+      <label>Probe type
+        <select id="probe_id" onchange="selectProbeType(this)">
+          <option value="1">PT100</option>
+          <option value="2">Thermocouple</option>
+        </select>
+      </label>
+      <label>Number of probes
+        <select id="probe_number" onchange="selectProbeAmount(this)">
+          <option value="1">1 probe</option>
+          <option value="2">2 probes</option>
+          <option value="3">3 probes</option>
+          <option value="4">4 probes</option>
+          <option value="5">5 probes</option>
+        </select>
+      </label>
+      <p class="hint">Changing the number of probes restarts the controller.</p>
+      <button class="btn danger" onclick="reboot()">Restart controller</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-cal">
+    <div class="form-grid">
+      <p class="hint">Calibration offset per probe; it is subtracted from the measured temperature.</p>
+      <label>Probe 1 (now <span id="cal_val1">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv1"><button class="btn" onclick="updateText('cv1')">Save</button></div></label>
+      <label>Probe 2 (now <span id="cal_val2">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv2"><button class="btn" onclick="updateText('cv2')">Save</button></div></label>
+      <label>Probe 3 (now <span id="cal_val3">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv3"><button class="btn" onclick="updateText('cv3')">Save</button></div></label>
+      <label>Probe 4 (now <span id="cal_val4">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv4"><button class="btn" onclick="updateText('cv4')">Save</button></div></label>
+      <label>Probe 5 (now <span id="cal_val5">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv5"><button class="btn" onclick="updateText('cv5')">Save</button></div></label>
+      <p class="hint">Fan output range used in automatic mode (PWM 0–255).</p>
+      <label>Fan output min (now <span id="pid_val1">-</span>)<div class="field"><input type="number" id="pv1"><button class="btn" onclick="updateText('pv1')">Save</button></div></label>
+      <label>Fan output max (now <span id="pid_val2">-</span>)<div class="field"><input type="number" id="pv2"><button class="btn" onclick="updateText('pv2')">Save</button></div></label>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-wifi">
+    <div class="form-grid">
+      <p class="hint">Home network to join at start-up. Without it the controller starts its own network "ESP32-AP" at 192.168.4.1.</p>
+      <label>Network name (saved: <span id="SSID">-</span>)<div class="field"><input type="text" id="ssid" autocomplete="off" maxlength="31"><button class="btn" onclick="updateTemp('I')">Save</button></div></label>
+      <label>Password (saved: <span id="PASS">-</span>)<div class="field"><input type="password" id="pass" autocomplete="off" maxlength="31"><button class="btn" onclick="updateTemp('P')">Save</button></div></label>
+      <p class="hint">Restart the controller to connect with the new settings.</p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="backdrop" onclick="closeSheets()"></div>
+<div class="toast" id="toast"></div>
+
+<script src="chart.js"></script>
+<script>
+// ----------------------------------------------------------------------------
+// Protocol (unchanged, see src/websocketMessages.h):
+//   page -> controller: "GGG<n>" (request setting n), "1xx<value>" (set value), "I<ssid>", "P<password>"
+//   controller -> page: "G?<value>" settings, "T<t1>+<t2>+...+" temperatures, "S?<value>" graph/timers/fan,
+//                       "RI<ssid>", "RP<password>"
+// ----------------------------------------------------------------------------
+
+var gateway = `ws://${window.location.hostname}/ws`;
+var websocket;
+var reconnectTimer = null;
+var lastMessageTime = 0;
+// the controller sends temperatures every second; if nothing arrives for this long
+// the connection is dead (phone screen was off, walked out of wifi range, ...)
+var connectionTimeout = 6000;
+var syncIndex = 0;          // which setting ("GGG<n>") to request next after connecting
+var lastSyncIndex = 22;
+
+var timer1failsafe = false;
+var timer2failsafe = false;
+var targetCelsius1 = 0;
+var targetCelsius2 = 0;
+var offsetFromTargetTempMax = 0;
+var offsetFromTargetTempMin = 0;
+var alarmTime1 = 0;
+var alarmTime2 = 0;
+var fanSpeed = 0;
+
+var alarms = {
+	1: {interval: 0, count: 0, active: false, text: ''},  // BBQ
+	2: {interval: 0, count: 0, active: false, text: ''}   // food
+};
+
+function $(id) { return document.getElementById(id); }
+
+window.addEventListener('load', onLoad);
+
+function onLoad() {
+	initWebSocket();
+	setInterval(checkConnection, 2000);
+	document.addEventListener('visibilitychange', function () {
+		// reconnect straight away when the phone is unlocked / the tab is shown again
+		if (!document.hidden && (Date.now() - lastMessageTime > connectionTimeout || websocket.readyState != WebSocket.OPEN)) {
+			reconnectNow();
+		}
+	});
+	// browsers only play sound after a tap: unlock audio on the first tap anywhere
+	document.addEventListener('click', unlockAudio, {once: true});
+	showSliderValue($('1Y1').value);
+}
+
+// ----------------------------------------------------------------------------
+// WebSocket handling
+// ----------------------------------------------------------------------------
+
+function initWebSocket() {
+	if (websocket) { // drop the old (dead) connection without triggering its onclose again
+		websocket.onopen = websocket.onclose = websocket.onmessage = null;
+		try { websocket.close(); } catch (e) {}
+	}
+	lastMessageTime = Date.now();
+	websocket = new WebSocket(gateway);
+	websocket.onopen = onOpen;
+	websocket.onclose = onClose;
+	websocket.onmessage = onMessage;
+}
+
+function scheduleReconnect() {
+	setConnectionStatus(false);
+	if (reconnectTimer == null) {
+		reconnectTimer = setTimeout(function () { reconnectTimer = null; initWebSocket(); }, 2000);
+	}
+}
+
+function reconnectNow() {
+	clearTimeout(reconnectTimer);
+	reconnectTimer = null;
+	setConnectionStatus(false);
+	initWebSocket();
+}
+
+function checkConnection() {
+	if (Date.now() - lastMessageTime > connectionTimeout) {
+		scheduleReconnect();
+	}
+}
+
+function setConnectionStatus(connected) {
+	var el = $('conn-status');
+	el.textContent = connected ? 'connected' : 'offline';
+	el.className = 'pill ' + (connected ? 'on' : 'off');
+}
+
+function onOpen() {
+	syncIndex = 0;
+	doSend('GGG' + syncIndex);
+}
+
+function onClose() {
+	scheduleReconnect();
+}
+
+function doSend(message) {
+	if (websocket && websocket.readyState == WebSocket.OPEN) {
+		websocket.send(String(message));
+	}
+}
+
+function setChecked(id, value) {
+	$(id).checked = (value == '1');
+}
+
+function onMessage(event) {
+	var string = event.data;
+	lastMessageTime = Date.now();
+	setConnectionStatus(true);
+
+	var type = string.charAt(0);
+	var key = string.charAt(1);
+	var residu = string.slice(2);
+
+	if (type == 'G') {
+		handleSetting(key, residu);
+		// request the next setting after each reply until all are known
+		if (syncIndex < lastSyncIndex) {
+			syncIndex++;
+			doSend('GGG' + syncIndex);
+		}
+	}
+	else if (type == 'T') {
+		handleTemperatures(string.slice(1).split('+'));
+	}
+	else if (type == 'S') {
+		handleStatus(key, residu);
+	}
+	else if (type == 'R') {
+		if (key == 'P') { $('PASS').textContent = residu ? '•'.repeat(residu.length) : '-'; }
+		else if (key == 'I') { $('SSID').textContent = residu || '-'; }
+	}
+}
+
+function handleSetting(key, residu) {
+	switch (key) {
+		case 'A': setChecked('1D1', residu); break;                 // start BBQ timer at target
+		case 'a': setChecked('1D2', residu); break;                 // start food timer at target
+		case 'C': targetCelsius1 = parseInt(residu); $('targetTemperature1').textContent = residu; break;
+		case 'D': targetCelsius2 = parseInt(residu); $('targetTemperature2').textContent = residu; break;
+		case 'E': alarmTime1 = parseInt(residu); $('alarm1').textContent = formatDuration(alarmTime1); break;
+		case 'F': alarmTime2 = parseInt(residu); $('alarm2').textContent = formatDuration(alarmTime2); break;
+		case 'G': setChecked('1G1', residu); break;                 // BBQ timer alarm
+		case 'H': setChecked('1G2', residu); break;                 // food timer alarm
+		case 'I': timer1failsafe = (residu == '1'); break;          // prevents the timer from restarting over and over
+		case 'i': timer2failsafe = (residu == '1'); break;
+		case 'M': setChecked('1J1', residu); break;                 // BBQ alarm at target
+		case 'N': setChecked('1J2', residu); break;                 // food alarm at target
+		case 'O': offsetFromTargetTempMax = parseInt(residu); $('offsetFromTargetTempMax').textContent = residu; break;
+		case 'o': offsetFromTargetTempMin = parseInt(residu); $('offsetFromTargetTempMin').textContent = residu; break;
+		case 'Q': setChecked('1L1', residu); break;                 // fan on
+		case 'R': setChecked('1M1', residu); break;                 // too hot alarm
+		case 'r': setChecked('1M2', residu); break;                 // too cold alarm
+		case 'S':
+			$('probe_number').value = residu;
+			$('more-probes').classList.toggle('hidden', parseInt(residu) <= 2);
+			break;
+		case 'T': $('probe_id').value = residu; break;
+		case 'U':
+			setChecked('1T1', residu);
+			$('fan-mode').textContent = residu == '1' ? 'manual' : 'auto';
+			break;
+		case 'V': setValues(['cal_val1', 'cal_val2', 'cal_val3', 'cal_val4', 'cal_val5'], residu.split('+')); break;
+		case 'W': setValues(['pid_val1', 'pid_val2'], residu.split('+')); break;
+		case 'Y': $('1Y1').value = residu; showSliderValue(residu); break;
+	}
+}
+
+function setValues(ids, values) {
+	ids.forEach(function (id, i) { $(id).textContent = values[i] !== undefined ? values[i] : '-'; });
+}
+
+function handleTemperatures(values) {
+	var bbq = parseFloat(values[0]);
+	var food = parseFloat(values[1]);
+	showTemp('temperature1', values[0]);
+	showTemp('temperature2', values[1]);
+	showTemp('temperature3', values[2]);
+	showTemp('temperature4', values[3]);
+	showTemp('temperature5', values[4]);
+
+	if (targetCelsius1 > 0) {
+		if ($('1D1').checked && bbq >= targetCelsius1 && timer1failsafe) {
+			doSend('1C1' + 1);
+			timer1failsafe = false;
+			doSend('1E1' + 0);
+		}
+		if (offsetFromTargetTempMax > 1 && bbq > targetCelsius1 + offsetFromTargetTempMax && $('1M1').checked) {
+			$('1M1').checked = false;
+			doSend('1M1' + 0);
+			doSend('1RR' + 2);
+			playAlarm(1, 10, 'BBQ too hot');
+		}
+		if (offsetFromTargetTempMin > 1 && bbq < targetCelsius1 - offsetFromTargetTempMin && $('1M2').checked) {
+			$('1M2').checked = false;
+			doSend('1M2' + 0);
+			doSend('1RR' + 2);
+			playAlarm(1, 10, 'BBQ too cold');
+		}
+		if (bbq >= targetCelsius1 && $('1J1').checked) {
+			$('1J1').checked = false;
+			doSend('1J1' + 0);
+			doSend('1RR' + 1);
+			playAlarm(1, 10, 'BBQ reached ' + targetCelsius1 + '°C');
+		}
+	}
+	if (targetCelsius2 > 0) {
+		if ($('1D2').checked && food >= targetCelsius2 && timer2failsafe) {
+			doSend('1C2' + 1);
+			timer2failsafe = false;
+			doSend('1E2' + 0);
+		}
+		if (food >= targetCelsius2 && $('1J2').checked) {
+			$('1J2').checked = false;
+			doSend('1J2' + 0);
+			doSend('1RR' + 1);
+			playAlarm(2, 10, 'Food reached ' + targetCelsius2 + '°C');
+		}
+	}
+	updateTime();
+}
+
+function showTemp(id, value) {
+	if (value === undefined || value === '') { return; }
+	var number = parseFloat(value);
+	$(id).textContent = isNaN(number) ? value : number.toFixed(1);
+}
+
+function handleStatus(key, residu) {
+	var seconds = parseInt(residu);
+	switch (key) {
+		case 'C': drawChart(parseFloat(residu).toFixed(2)); break;
+		case 'D': drawChart1(parseFloat(residu).toFixed(2)); break;
+		case 'E':
+			$('timer').textContent = formatDuration(seconds);
+			if (seconds <= 1) { playAlarm(1, 1, 'Countdown finished'); }
+			break;
+		case 'G':
+			$('BBQcounter').textContent = formatDuration(seconds);
+			$('BBQcounter-s').textContent = seconds + ' s';
+			if (alarmTime1 > 1 && $('1G1').checked && seconds >= alarmTime1) {
+				$('1G1').checked = false;
+				doSend('1G1' + 0);
+				doSend('1RR' + 3);
+				playAlarm(1, 5, 'BBQ timer passed ' + formatDuration(alarmTime1));
+			}
+			break;
+		case 'H':
+			$('Foodcounter').textContent = formatDuration(seconds);
+			$('Foodcounter-s').textContent = seconds + ' s';
+			if (alarmTime2 > 1 && $('1G2').checked && seconds >= alarmTime2) {
+				$('1G2').checked = false;
+				doSend('1G2' + 0);
+				playAlarm(2, 5, 'Food timer passed ' + formatDuration(alarmTime2));
+			}
+			break;
+		case 'I':
+			fanSpeed = residu;
+			$('fanSpeed').textContent = residu;
+			$('fan-bar').style.width = Math.max(0, Math.min(100, seconds)) + '%';
+			break;
+	}
+}
+
+function formatDuration(totalSeconds) {
+	if (isNaN(totalSeconds)) { return '--'; }
+	var h = Math.floor(totalSeconds / 3600);
+	var m = Math.floor(totalSeconds % 3600 / 60);
+	var s = totalSeconds % 60;
+	return (h > 0 ? h + ':' + pad2(m) : m) + ':' + pad2(s);
+}
+
+// ----------------------------------------------------------------------------
+// Controls
+// ----------------------------------------------------------------------------
+
+function updateButton(id) {
+	var checked = $(id).checked;
+	if (checked) {
+		if (id == '1D1') { doSend(id + 1); timer1failsafe = true; }
+		else if (id == '1D2') { doSend(id + 1); timer2failsafe = true; }
+		else if (id == '1G1') { doSend(id + 1); doSend('1C1' + 1); }   // the timer alarm needs the timer running
+		else if (id == '1G2') { doSend(id + 1); doSend('1C2' + 1); }
+		else { doSend(id + 1); }
+	}
+	else {
+		doSend(id + 0);
+	}
+	if (id == '1T1') { $('fan-mode').textContent = checked ? 'manual' : 'auto'; }
+}
+
+function updateText(id) {
+	var map = {cv1: '1V1', cv2: '1V2', cv3: '1V3', cv4: '1V4', cv5: '1V5', pv1: '1W1', pv2: '1W2'};
+	if ($(id).value === '') { toast('Enter a value first'); return; }
+	doSend(map[id] + $(id).value);
+	toast('Saved');
+}
+
+function updateTemp(code) {
+	var map = {'1A1': 'A1', '1A2': 'A2', '1F1': 'F1', '1F2': 'F2', '1K1': 'K1', '1K2': 'K2', '1B1': 'B1', 'I': 'ssid', 'P': 'pass'};
+	var input = $(map[code]);
+	if (input.value === '') { toast('Enter a value first'); return; }
+	doSend(code + input.value);
+	if (code == 'P') { input.value = ''; }
+	toast(code == '1B1' ? 'Countdown started' : 'Saved');
+}
+
+function selectProbeType(select) {
+	doSend('1ST' + select.value);
+}
+
+function selectProbeAmount(select) {
+	doSend('1SN' + select.value);
+	toast('Restarting controller…');
+}
+
+function reboot() {
+	if (confirm('Restart the controller?')) {
+		doSend('1U1');
+		toast('Restarting controller…');
+	}
+}
+
+function showSliderValue(value) {
+	$('slider-value').textContent = Math.round(value / 255 * 100) + '%';
+}
+
+function updateSlider(id, value) {
+	showSliderValue(value);
+	doSend(id + value);
+}
+
+// ----------------------------------------------------------------------------
+// Alarm sound
+// ----------------------------------------------------------------------------
+
+function unlockAudio() {
+	var sound = new Audio('/alarm.mp3');
+	sound.muted = true;
+	sound.play().then(function () { sound.pause(); }).catch(function () {});
+}
+
+function ring() {
+	var sound = new Audio('/alarm.mp3');
+	sound.play().catch(function () {});
+}
+
+function playAlarm(channel, repeats, text) {
+	var alarm = alarms[channel];
+	stopAlarm(channel);
+	alarm.active = true;
+	alarm.text = text;
+	alarm.count = 0;
+	ring();
+	if (repeats > 1) {
+		alarm.interval = setInterval(function () {
+			ring();
+			alarm.count++;
+			if (alarm.count >= repeats) { stopAlarm(channel); }
+		}, 2900);
+	}
+	else {
+		setTimeout(function () { stopAlarm(channel); }, 3000);
+	}
+	showAlarms();
+}
+
+function stopAlarm(channel) {
+	clearInterval(alarms[channel].interval);
+	alarms[channel].active = false;
+	showAlarms();
+}
+
+function stopAllAlarms() {
+	stopAlarm(1);
+	stopAlarm(2);
+}
+
+function showAlarms() {
+	var texts = [1, 2].filter(function (c) { return alarms[c].active; }).map(function (c) { return alarms[c].text; });
+	$('alarm-banner').classList.toggle('show', texts.length > 0);
+	$('alarm-text').textContent = texts.join(' · ');
+	$('alarm-btn').classList.toggle('hidden', texts.length == 0);
+	$('alarm-btn').classList.toggle('alarm', texts.length > 0);
+}
+
+// ----------------------------------------------------------------------------
+// Sheets, tabs, toast, clock
+// ----------------------------------------------------------------------------
+
+function openSheet(id) {
+	closeSheets();
+	$(id).classList.add('open');
+	$('backdrop').classList.add('open');
+}
+
+function closeSheets() {
+	document.querySelectorAll('.sheet.open').forEach(function (s) { s.classList.remove('open'); });
+	$('backdrop').classList.remove('open');
+}
+
+document.addEventListener('keydown', function (e) { if (e.key == 'Escape') { closeSheets(); } });
+
+function showPanel(button) {
+	var tabs = button.parentElement;
+	tabs.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b == button); });
+	var sheet = tabs.parentElement;
+	sheet.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.id == button.dataset.panel); });
+}
+
+var toastTimer = 0;
+function toast(text) {
+	var el = $('toast');
+	el.textContent = text;
+	el.classList.add('show');
+	clearTimeout(toastTimer);
+	toastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
+}
+
+var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function pad2(n) {
+	return (n < 10 ? '0' : '') + n;
+}
+
+function updateTime() {
+	var now = new Date();
+	$('date-part').textContent = dayNames[now.getDay()] + ' ' + now.getDate() + ' ' + monthNames[now.getMonth()];
+	$('time-part').textContent = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+}
+
+// ----------------------------------------------------------------------------
+// Chart
+// ----------------------------------------------------------------------------
+
+var css = getComputedStyle(document.documentElement);
+var chartT = new MiniChart({
+	chart: {
+		renderTo: 'chart-temperature',
+		backgroundColor: 'transparent',
+		textColor: css.getPropertyValue('--text-dim').trim() || '#9aa4b1',
+		gridColor: css.getPropertyValue('--border').trim() || '#2b323c',
+		height: 320
+	},
+	title: {text: ''},
+	yAxis: {title: {text: '°C / fan %'}},
+	tooltip: {valueSuffix: ''},
+	series: [
+		{name: 'BBQ', color: '#ff7a2f'},
+		{name: 'BBQ target', color: '#6c8cff'},
+		{name: 'Food', color: '#f2c94c'},
+		{name: 'Fan %', color: '#2fbf71'}
+	]
+});
+
+var maxChartPoints = 1440;
+
+function addChartPoint(series, point) {
+	series.addPoint(point, true, series.data.length > maxChartPoints);
+}
+
+function drawChart(temp) {
+	var x = (new Date()).getTime();
+	addChartPoint(chartT.series[0], [x, parseFloat(temp)]);
+	addChartPoint(chartT.series[3], [x, parseFloat(fanSpeed)]);
+	if (targetCelsius1 > 0) {
+		addChartPoint(chartT.series[1], [x, targetCelsius1]);
+	}
+}
+
+function drawChart1(temp) {
+	addChartPoint(chartT.series[2], [(new Date()).getTime(), parseFloat(temp)]);
+}
+</script>
+<script src="mode.js" defer></script>
+</body>
+</html>

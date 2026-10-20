@@ -1,0 +1,8 @@
+/* BBQ controller specific styling, the shared look is in ui.css */
+:root {
+  --accent: #ff7a2f;
+  --accent-soft: rgba(255, 122, 47, 0.16);
+}
+
+.card h2 .icon-btn { width: 32px; height: 32px; border-radius: 10px; }
+.row .reading .value { font-variant-numeric: tabular-nums; }

@@ -1,0 +1,198 @@
+/* Greenhouse-specific additions on top of ui.css (shared with the BBQ controller). */
+
+:root {
+  --accent: #3fb950;
+  --accent-soft: rgba(63, 185, 80, 0.16);
+  /* chart series */
+  --c-soil: #f0883e;
+  --c-air: #e3b341;
+  --c-fan: #3fb950;
+  --c-humid: #39c5cf;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --c-soil: #d4651f;
+    --c-air: #b7860b;
+    --c-fan: #2a9d3f;
+    --c-humid: #1a9aa5;
+  }
+}
+
+/* topbar: keep a compact clock visible on phones too */
+.topbar .titles { min-width: 0; display: flex; flex-direction: column; }
+.topbar .sub .short { display: none; }
+@media (max-width: 420px) {
+  .topbar { gap: 8px; }
+  .topbar .sub { display: block; }
+  .topbar .sub .long { display: none; }
+  .topbar .sub .short { display: inline; }
+}
+
+.pill { transition: background 0.2s, color 0.2s; }
+.pill.ack { color: var(--accent); background: var(--accent-soft); }
+
+/* section titles */
+.section-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  font-weight: 650;
+  margin: 20px 2px 10px;
+}
+
+/* zone cards */
+.zone .readings { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 4px 16px; }
+.zone .reading small { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 2px; }
+.zone .reading.na .value { color: var(--text-dim); opacity: 0.5; }
+.zone .stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.stat {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.stat .k { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dim); }
+.stat .k svg.i { width: 14px; height: 14px; }
+.stat .v { font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .v small { font-size: 0.78rem; color: var(--text-dim); font-weight: 500; }
+.stat.na .v { color: var(--text-dim); }
+.fanline { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 0.85rem; color: var(--text-dim); }
+.fanline .bar { flex: 1; margin-top: 0; }
+.fanline b { color: var(--text); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+.zone .chip svg.i { width: 16px; height: 16px; }
+.card h2 .edit {
+  margin-left: auto;
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+}
+.card h2 .edit:hover { color: var(--accent); }
+
+/* relay overview */
+.relays { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.relay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+.relay .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex: none; }
+.relay.on .dot { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.relay .t { min-width: 0; }
+.relay .t b { display: block; font-size: 0.85rem; }
+.relay .t span { display: block; font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.relay.unused { opacity: 0.5; }
+
+/* configure shortcuts */
+.shortcuts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.shortcuts button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px 6px 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.shortcuts button svg.i { color: var(--accent); }
+.shortcuts button:hover { border-color: var(--accent); }
+
+/* settings sheet */
+.sheet .sticky {
+  position: sticky;
+  top: -8px;
+  z-index: 2;
+  background: var(--surface);
+  margin: -8px -18px 0;
+  padding: 8px 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sheet .tabs { margin-bottom: 8px; }
+.sheet .eeprom { border-top: 0; padding: 4px 0 8px; }
+.panel h4 {
+  margin: 18px 0 4px;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel h4 svg.i { color: var(--accent); width: 18px; height: 18px; }
+.frow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+.frow.sel { grid-template-columns: minmax(0, 1fr) minmax(140px, 46%); }
+.frow.txt { grid-template-columns: minmax(0, 1fr) auto; }
+.frow.txt .label { grid-column: 1 / -1; }
+.frow .label { min-width: 0; font-size: 0.92rem; }
+.frow .label small, .row .label small { display: block; color: var(--text-dim); font-size: 0.76rem; }
+.unitwrap { position: relative; }
+.unitwrap input { padding-right: 34px; }
+.unitwrap i {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font-style: normal; font-size: 0.78rem; color: var(--text-dim); pointer-events: none;
+}
+.frow .btn { padding: 10px 12px; }
+.timepair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 4px 0 12px; }
+.timepair label { display: grid; gap: 4px; font-size: 0.76rem; color: var(--text-dim); }
+.rangewrap { display: grid; grid-template-columns: minmax(0, 1fr) 3.6em; gap: 12px; align-items: center; padding: 4px 0 12px; }
+.rangewrap output { font-variant-numeric: tabular-nums; text-align: right; font-weight: 650; }
+.note {
+  display: flex;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 6px;
+}
+.note svg.i { flex: none; width: 18px; height: 18px; color: var(--accent); margin-top: 1px; }
+.note p { margin: 0 0 6px; }
+.note p:last-child { margin-bottom: 0; }
+.relaycfg { padding: 10px 0; border-top: 1px solid var(--border); }
+.relaycfg .head { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; align-items: center; }
+.relaycfg .opts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 10px 0 0 80px; }
+.relaycfg .opts label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); }
+.actions .btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.btn svg.i { width: 18px; height: 18px; }
+.panel > .row:first-child, .panel > h4 + .row { border-top: 1px solid var(--border); }
+
+.chart-card h2 { padding: 8px 8px 0; }
+
+.foot { margin-top: 20px; text-align: center; font-size: 0.75rem; color: var(--text-dim); }
+.foot a { color: inherit; }
+
+body.sheet-open { overflow: hidden; }
+
+@media (min-width: 900px) {
+  .zones { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

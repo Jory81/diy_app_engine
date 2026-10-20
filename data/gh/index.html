@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1216">
+<title>Greenhouse</title>
+<!-- Everything is served by the ESP32 itself: no CDN, so the page also works in soft-AP mode (192.168.4.1) without internet. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233fb950' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- icon sprite (simple stroke icons, Feather/Lucide style) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+  <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="M1 1l22 22"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></symbol>
+  <symbol id="i-fan" viewBox="0 0 24 24"><path d="M10.83 16.38a6.08 6.08 0 0 1-8.62-7l5.41 1.45a6.08 6.08 0 0 1 7-8.62l-1.45 5.41a6.08 6.08 0 0 1 8.62 7l-5.41-1.45a6.08 6.08 0 0 1-7 8.62l1.45-5.41Z"/><path d="M12 12v.01"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-toggle" viewBox="0 0 24 24"><rect x="1" y="5" width="22" height="14" rx="7"/><circle cx="16" cy="12" r="3"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="topbar">
+    <div class="logo"><svg class="i"><use href="#i-leaf"/></svg></div>
+    <div class="titles">
+      <h1>Greenhouse</h1>
+      <div class="sub" id="clock"><span class="long">&nbsp;</span><span class="short">&nbsp;</span></div>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill off" id="conn" role="status" aria-live="polite">Offline</span>
+    <button class="icon-btn" id="muteBtn" type="button" title="Mute alarm sound" aria-pressed="false"><svg class="i"><use href="#i-bell"/></svg></button>
+    <button class="icon-btn" id="settingsBtn" type="button" title="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
+  </header>
+
+  <div class="banner" id="alarmBanner" role="alert">
+    <svg class="i"><use href="#i-alert"/></svg>
+    <span id="alarmText">Alarm</span>
+    <button class="btn danger" id="silenceBtn" type="button">Silence</button>
+  </div>
+
+  <!-- climate zones -->
+  <section class="grid zones">
+    <article class="card zone" data-zone="1">
+      <h2><svg class="i sm"><use href="#i-leaf"/></svg>Peppers (1)
+        <button class="edit" type="button" data-open="temp" title="Edit Peppers settings"><svg class="i sm"><use href="#i-edit"/></svg></button></h2>
+      <div class="readings">
+        <div class="reading-wrap" data-probe="1">
+          <div class="reading"><span class="value" data-show="temp1">—</span><span class="unit">°C soil</span></div>
+        </div>
+      </div>
+      <div class="meta"><span>Target <b data-target="1">—</b></span></div>
+      <div class="stats">
+        <div class="stat" data-dht="1"><div class="k"><svg class="i"><use href="#i-thermo"/></svg>Air</div><div class="v"><span data-show="temp6">—</span> <small>°C</small></div></div>
+        <div class="stat" data-dht="1"><div class="k"><svg class="i"><use href="#i-drop"/></svg>Humidity</div><div class="v"><span data-show="humid1">—</span> <small>%</small></div></div>
+        <div class="stat"><div class="k"><svg class="i"><use href="#i-wind"/></svg>Air target</div><div class="v"><span data-show="targetAirTemp1">—</span> <small>°C</small></div></div>
+        <div class="stat"><div class="k"><svg class="i"><use href="#i-clock"/></svg>Lights</div><div class="v"><span data-show="lights1ON">--:--</span><small>–</small><span data-show="lights1OFF">--:--</span></div></div>
+      </div>
+      <div class="fanline"><svg class="i sm"><use href="#i-fan"/></svg>Fan<div class="bar"><i data-bar="fanspeed1"></i></div><b><span data-show="fanspeed1">—</span>%</b></div>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="heater1" data-key="heater1"><svg class="i"><use href="#i-flame"/></svg>Heater</label>
+        <label class="chip"><input type="checkbox" id="lights1" data-key="lights1"><svg class="i"><use href="#i-sun"/></svg>Lights</label>
+        <label class="chip"><input type="checkbox" id="fan1" data-key="fan1"><svg class="i"><use href="#i-fan"/></svg>Fan</label>
+        <label class="chip"><input type="checkbox" id="humidifier1" data-key="humidifier1"><svg class="i"><use href="#i-drop"/></svg>Humidifier</label>
+      </div>
+    </article>
+
+    <article class="card zone" data-zone="2">
+      <h2><svg class="i sm"><use href="#i-leaf"/></svg>Tomatoes (2)
+        <button class="edit" type="button" data-open="temp" title="Edit Tomatoes settings"><svg class="i sm"><use href="#i-edit"/></svg></button></h2>
+      <div class="readings">
+        <div class="reading-wrap" data-probe="2">
+          <div class="reading"><span class="value" data-show="temp2">—</span><span class="unit">°C soil</span></div>
+        </div>
+      </div>
+      <div class="meta"><span>Target <b data-target="2">—</b></span></div>
+      <div class="stats">
+        <div class="stat" data-dht="2"><div class="k"><svg class="i"><use href="#i-thermo"/></svg>Air</div><div class="v"><span data-show="temp7">—</span> <small>°C</small></div></div>
+        <div class="stat" data-dht="2"><div class="k"><svg class="i"><use href="#i-drop"/></svg>Humidity</div><div class="v"><span data-show="humid2">—</span> <small>%</small></div></div>
+        <div class="stat"><div class="k"><svg class="i"><use href="#i-wind"/></svg>Air target</div><div class="v"><span data-show="targetAirTemp2">—</span> <small>°C</small></div></div>
+        <div class="stat"><div class="k"><svg class="i"><use href="#i-clock"/></svg>Lights</div><div class="v"><span data-show="lights2ON">--:--</span><small>–</small><span data-show="lights2OFF">--:--</span></div></div>
+      </div>
+      <div class="fanline"><svg class="i sm"><use href="#i-fan"/></svg>Fan<div class="bar"><i data-bar="fanspeed2"></i></div><b><span data-show="fanspeed2">—</span>%</b></div>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="heater2" data-key="heater2"><svg class="i"><use href="#i-flame"/></svg>Heater</label>
+        <label class="chip"><input type="checkbox" id="lights2" data-key="lights2"><svg class="i"><use href="#i-sun"/></svg>Lights</label>
+        <label class="chip"><input type="checkbox" id="fan2" data-key="fan2"><svg class="i"><use href="#i-fan"/></svg>Fan</label>
+        <label class="chip"><input type="checkbox" id="humidifier2" data-key="humidifier2"><svg class="i"><use href="#i-drop"/></svg>Humidifier</label>
+      </div>
+    </article>
+
+    <article class="card zone" data-zone="3">
+      <h2><svg class="i sm"><use href="#i-leaf"/></svg>Seeds (3/4)
+        <button class="edit" type="button" data-open="temp" title="Edit Seeds settings"><svg class="i sm"><use href="#i-edit"/></svg></button></h2>
+      <div class="readings">
+        <div class="reading-wrap" data-probe="3">
+          <small>Probe 3</small>
+          <div class="reading"><span class="value" data-show="temp3">—</span><span class="unit">°C</span></div>
+        </div>
+        <div class="reading-wrap" data-probe="4">
+          <small>Probe 4</small>
+          <div class="reading"><span class="value" data-show="temp4">—</span><span class="unit">°C</span></div>
+        </div>
+      </div>
+      <div class="meta"><span>Target 3 <b data-target="3">—</b></span><span>Target 4 <b data-target="4">—</b></span></div>
+      <div class="stats">
+        <div class="stat"><div class="k"><svg class="i"><use href="#i-clock"/></svg>Lights</div><div class="v"><span data-show="lights3ON">--:--</span><small>–</small><span data-show="lights3OFF">--:--</span></div></div>
+        <div class="stat"><div class="k"><svg class="i"><use href="#i-thermo"/></svg>Day / night</div><div class="v"><span data-show="daySoilTemp3">—</span><small> / </small><span data-show="nightSoilTemp3">—</span> <small>°C</small></div></div>
+      </div>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="heater3" data-key="heater3"><svg class="i"><use href="#i-flame"/></svg>Heater 3</label>
+        <label class="chip"><input type="checkbox" id="heater4" data-key="heater4"><svg class="i"><use href="#i-flame"/></svg>Heater 4</label>
+        <label class="chip"><input type="checkbox" id="lights3" data-key="lights3"><svg class="i"><use href="#i-sun"/></svg>Lights</label>
+      </div>
+    </article>
+  </section>
+
+  <div class="section-title">Relays</div>
+  <section class="card">
+    <div class="relays" id="relayOverview"></div>
+  </section>
+
+  <div class="section-title">History</div>
+  <section class="grid charts">
+    <div class="card chart-card"><h2><svg class="i sm"><use href="#i-chart"/></svg>Peppers (1)</h2><div id="chart-temperature1"></div></div>
+    <div class="card chart-card"><h2><svg class="i sm"><use href="#i-chart"/></svg>Tomatoes (2)</h2><div id="chart-temperature2"></div></div>
+  </section>
+
+  <div class="section-title">Configure</div>
+  <section class="card">
+    <div class="shortcuts">
+      <button type="button" data-open="temp"><svg class="i"><use href="#i-thermo"/></svg>Temperature</button>
+      <button type="button" data-open="humid"><svg class="i"><use href="#i-drop"/></svg>Humidity</button>
+      <button type="button" data-open="fans"><svg class="i"><use href="#i-wind"/></svg>Air flow</button>
+      <button type="button" data-open="lights"><svg class="i"><use href="#i-sun"/></svg>Lights</button>
+      <button type="button" data-open="relays"><svg class="i"><use href="#i-toggle"/></svg>Relays</button>
+      <button type="button" data-open="cal"><svg class="i"><use href="#i-target"/></svg>Calibration</button>
+      <button type="button" data-open="system"><svg class="i"><use href="#i-cpu"/></svg>System</button>
+    </div>
+    <div class="chips">
+      <label class="chip" title="Keep changed values after a power loss"><input type="checkbox" data-key="saveInEEPROM"><svg class="i"><use href="#i-save"/></svg>Save in EEPROM</label>
+    </div>
+  </section>
+
+  <div class="foot">ESP32 greenhouse controller · <a href="/update">firmware update</a></div>
+</div>
+
+<!-- settings sheet -->
+<div class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sticky">
+    <div class="grab"></div>
+    <header>
+      <h3 id="sheetTitle">Settings</h3>
+      <button class="icon-btn" type="button" data-close title="Close"><svg class="i"><use href="#i-x"/></svg></button>
+    </header>
+    <label class="row eeprom">
+      <span class="label">Save in EEPROM<small>On: the values you change below survive a power loss. System and relay settings are always saved.</small></span>
+      <span class="switch"><input type="checkbox" id="saveInEEPROM" data-key="saveInEEPROM"><span></span></span>
+    </label>
+    <nav class="tabs" id="tabs">
+      <button type="button" data-tab="temp">Temperature</button>
+      <button type="button" data-tab="humid">Humidity</button>
+      <button type="button" data-tab="fans">Air flow</button>
+      <button type="button" data-tab="lights">Lights</button>
+      <button type="button" data-tab="relays">Relays</button>
+      <button type="button" data-tab="cal">Calibration</button>
+      <button type="button" data-tab="system">System</button>
+    </nav>
+  </div>
+  <div id="panels"></div>
+</div>
+<div class="sheet-backdrop" id="backdrop"></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="chart.js"></script>
+<script>
+(function () {
+'use strict';
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+function $(s, r) { return (r || document).querySelector(s); }
+function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function icon(name, cls) { return '<svg class="i' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
+function num(v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; }
+function fmt(v, d) { var n = num(v); return isFinite(n) ? n.toFixed(d) : '—'; }
+function isOn(v) { return v === true || v === 1 || v === 'true' || v === '1'; }
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function store(k, v) { try { if (v === undefined) { return localStorage.getItem(k); } localStorage.setItem(k, v); } catch (e) { return null; } }
+
+var S = {};            // last values reported by the controller (firmware keys)
+var MAX_POINTS = 1440; // same history length as the old Highcharts page
+
+// controller key -> form-control key (the control key is what the page SENDS)
+var IN = {};
+for (var r = 1; r <= 6; r++) {
+	IN['relay' + r + 'c'] = 'relay' + r + 'Connected';
+	IN['relay' + r + 'm'] = 'manualRelay' + r;
+	IN['relay' + r + 'f'] = 'funcRelay' + r;
+}
+for (var c = 1; c <= 8; c++) { IN['calV' + c] = 'calValue' + c; }
+IN.fan1c = 'fan1Connected'; IN.fan2c = 'fan2Connected';
+IN.fan1m = 'manualMosfet1'; IN.fan2m = 'manualMosfet2';
+var DEV = {}; // inverse: control key -> controller key
+Object.keys(IN).forEach(function (k) { DEV[IN[k]] = k; });
+function devKey(k) { return DEV[k] || k; }
+
+var RELAY_FUNCS = [
+	[0, 'No function'], [1, 'Heater 1 · Peppers'], [2, 'Heater 2 · Tomatoes'], [3, 'Heater 3 · Seeds'], [4, 'Heater 4 · Seeds'],
+	[5, 'Lights 1 · Peppers'], [6, 'Lights 2 · Tomatoes'], [7, 'Lights 3 · Seeds'],
+	[8, 'Humidifier 1'], [9, 'Humidifier 2'], [10, 'DHT sensor power']
+];
+var FUNC_STATE = {1: 'heater1', 2: 'heater2', 3: 'heater3', 4: 'heater4', 5: 'lights1', 6: 'lights2', 7: 'lights3', 8: 'humidifier1', 9: 'humidifier2'};
+
+// ---------------------------------------------------------------------------
+// settings panels (built from small descriptors to keep the markup consistent)
+// ---------------------------------------------------------------------------
+function hNum(key, label, unit, hint) {
+	return '<div class="frow"><div class="label">' + label +
+		'<small>' + (hint ? hint + ' · ' : '') + 'device: <span data-show="' + devKey(key) + '" data-fmt="raw">—</span> ' + (unit || '') + '</small></div>' +
+		'<div class="unitwrap"><input type="number" step="any" inputmode="decimal" id="' + key + '" data-key="' + key + '" aria-label="' + esc(label) + '">' +
+		(unit ? '<i>' + unit + '</i>' : '') + '</div>' +
+		'<button class="btn" type="button" data-save="' + key + '">Set</button></div>';
+}
+function hSwitch(key, label, hint) {
+	return '<label class="row"><span class="label">' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span>' +
+		'<span class="switch"><input type="checkbox" id="' + key + '" data-key="' + key + '"><span></span></span></label>';
+}
+function hSelect(key, label, options, hint) {
+	return '<div class="frow sel"><div class="label">' + label + (hint ? '<small>' + hint + '</small>' : '') + '</div>' +
+		'<select id="' + key + '" data-key="' + key + '" aria-label="' + esc(label) + '">' +
+		options.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select></div>';
+}
+function hNote(html) { return '<div class="note">' + icon('info') + '<div>' + html + '</div></div>'; }
+function hHead(title, ic) { return '<h4>' + icon(ic || 'leaf') + title + '</h4>'; }
+
+function buildPanels() {
+	var p = {};
+	p.temp = [1, 2, 3, 4].map(function (i) {
+		var names = {1: 'Peppers (1)', 2: 'Tomatoes (2)', 3: 'Seeds (3) · probe 3', 4: 'Seeds (4) · probe 4'};
+		var h = hHead(names[i]) +
+			hNum('daySoilTemp' + i, 'Day soil temperature', '°C', 'lights on') +
+			hNum('nightSoilTemp' + i, 'Night soil temperature', '°C', 'lights off') +
+			hNum('tempRange' + i, 'Temperature range', '°C', 'heater hysteresis ±') +
+			hNum('alarmRange' + i, i <= 2 ? 'Alarm / air range' : 'Alarm range', '°C') +
+			hSwitch('soilAlarm' + i, 'Soil temperature alarm', 'Sound when the soil is more than the alarm range off target');
+		if (i <= 2) {
+			h += hNum('targetAirTemp' + i, 'Target air temperature', '°C', 'fans speed up above this') +
+				hSwitch('airAlarm' + i, 'Air temperature alarm', 'Sound when the air is warmer than target + alarm range');
+		}
+		return h;
+	}).join('');
+
+	p.humid = [1, 2].map(function (i) {
+		return hHead('Humidity sensor ' + i + (i === 1 ? ' · Peppers' : ' · Tomatoes'), 'drop') +
+			hNum('humidMin' + i, 'Humidifier on below', '%') +
+			hNum('humidMax' + i, 'Humidifier off above', '%');
+	}).join('');
+
+	p.fans = hNote('<p>When the fan speed is not manually controlled, the manual fan speed (slider) is used while the air temperature is below the target air temperature. Set it to 0 (and save to EEPROM) to switch the fan off when the air is below target.</p>' +
+			'<p>With <b>On during day</b>, the fan runs at its minimum speed while the lights are on, and at the manual fan speed at night.</p>') +
+		[1, 2].map(function (i) {
+			return hHead('Fan ' + i + (i === 1 ? ' · Peppers' : ' · Tomatoes'), 'fan') +
+				hSwitch('fan' + i + 'Connected', 'Fan connected') +
+				hSwitch('manualMosfet' + i, 'Manual fan control', 'Fan follows the Fan chip and the slider below') +
+				hSwitch('fan' + i + 'daySwitch', 'On during day') +
+				'<div class="frow txt"><div class="label">Manual fan speed<small>0–255 · sent when you release the slider · device: <span data-show="manualFanspeed' + i + '" data-fmt="raw">—</span></small></div></div>' +
+				'<div class="rangewrap"><input id="manualFanspeed' + i + '" data-key="manualFanspeed' + i + '" type="range" min="0" max="255" step="1" value="128" aria-label="Manual fan speed ' + i + '"><output data-out="manualFanspeed' + i + '">128</output></div>' +
+				hNum('OUTPUT_MIN' + i, 'Minimum speed', '', '0–255') +
+				hNum('OUTPUT_MAX' + i, 'Maximum speed', '', '0–255');
+		}).join('');
+
+	p.lights = [1, 2, 3].map(function (i) {
+		var names = {1: 'Peppers (1)', 2: 'Tomatoes (2)', 3: 'Seeds (3/4)'};
+		return hHead('Lights ' + i + ' · ' + names[i], 'sun') +
+			'<div class="frow txt"><div class="label">Current schedule<small>device: <span data-show="lights' + i + 'ON">--:--</span> – <span data-show="lights' + i + 'OFF">--:--</span></small></div></div>' +
+			'<div class="timepair">' +
+			'<label>On<input type="time" id="lights' + i + 'on" data-key="lights' + i + 'ON"></label>' +
+			'<label>Off<input type="time" id="lights' + i + 'off" data-key="lights' + i + 'OFF"></label>' +
+			'<button class="btn" type="button" data-lights="' + i + '">Set</button></div>';
+	}).join('');
+
+	var relays = '';
+	for (var i = 1; i <= 6; i++) {
+		relays += '<div class="relaycfg"><div class="head"><b>Relay ' + i + '</b>' +
+			'<select id="funcRelay' + i + '" data-key="funcRelay' + i + '" aria-label="Relay ' + i + ' function">' +
+			RELAY_FUNCS.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select></div>' +
+			'<div class="opts"><label><span class="switch"><input type="checkbox" id="relay' + i + 'Connected" data-key="relay' + i + 'Connected"><span></span></span>Connected</label>' +
+			'<label><span class="switch"><input type="checkbox" id="manualRelay' + i + '" data-key="manualRelay' + i + '"><span></span></span>Manual control</label></div></div>';
+	}
+	p.relays = hNote('<p>With <b>Manual control</b> the relay ignores its automatic rule and follows the matching Heater / Lights / Humidifier chip on the dashboard (or this switch when no function is attached).</p><p>Relay settings are always saved to EEPROM.</p>') + relays;
+
+	p.cal = hHead('Soil probes (PT100)', 'thermo') +
+		[1, 2, 3, 4].map(function (i) { return hNum('calValue' + i, 'Probe ' + i + ' offset', '°C'); }).join('') +
+		hHead('DHT sensors · temperature', 'thermo') +
+		hNum('calValue5', 'DHT 1 temperature offset', '°C') + hNum('calValue6', 'DHT 2 temperature offset', '°C') +
+		hHead('DHT sensors · humidity', 'drop') +
+		hNum('calValue7', 'DHT 1 humidity offset', '%') + hNum('calValue8', 'DHT 2 humidity offset', '%');
+
+	p.system = hNote('<p>System and relay settings are always saved to EEPROM. For other settings to survive a power loss, switch on <b>Save in EEPROM</b> first and then change the values.</p>' +
+			'<p>Pins (Wemos D1 mini ESP32): temp [5, 26, 27, 32] · relays [14, 13, 25, 33, 2, 15] · DHT [17, 16] · fans [4, 0]. Disconnect pin 2 when flashing, and pins 2, 0 and 4 when using the serial monitor.</p>') +
+		hHead('Sensors', 'thermo') +
+		hSelect('probeTypeT', 'Soil probe type', [[1, 'PT100'], [2, 'Thermocouple']]) +
+		hSelect('probeCountT', 'Soil probes', [[0, 'No probes'], [1, '1 probe'], [2, '2 probes'], [3, '3 probes'], [4, '4 probes']]) +
+		hSelect('probeTypeH', 'Humidity sensor type', [[0, 'DHT22'], [1, 'DHT11']]) +
+		hSelect('probeCountH', 'Humidity sensors', [[0, 'No probes'], [1, '1 probe'], [2, '2 probes']]) +
+		hHead('Sampling', 'chart') +
+		hSelect('graphUpdate', 'Graph update', [[1, 'Every second'], [2, 'Every 2 seconds'], [5, 'Every 5 seconds'], [30, 'Every 30 seconds'], [60, 'Every minute'], [120, 'Every 2 minutes'], [300, 'Every 5 minutes']]) +
+		hSelect('tempUpdate', 'Temperature sampling', [[1, 'Every second'], [2, 'Every 2 seconds'], [5, 'Every 5 seconds'], [10, 'Every 10 seconds'], [30, 'Every 30 seconds'], [60, 'Every minute']]) +
+		hSelect('measurements', 'Averaging', [[1, 'Per measurement'], [2, 'Average of 2'], [4, 'Average of 4'], [8, 'Average of 8'], [16, 'Average of 16']]) +
+		hHead('Clock', 'clock') +
+		hSwitch('externalRTC', 'External RTC', 'Changing this restarts the controller') +
+		hSwitch('resetRTC', 'Reset RTC', 'Sets the RTC to this device\'s time; switches back off when done' + '<span data-rtc></span>') +
+		hHead('Wi-Fi', 'wifi') +
+		'<div class="frow txt"><div class="label">Network name (SSID)<small>saved: <span data-show="wifiID" data-fmt="raw">—</span></small></div>' +
+		'<input type="text" id="ssid" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="SSID" aria-label="Wi-Fi SSID"><button class="btn" type="button" data-save="ssid">Set</button></div>' +
+		'<div class="frow txt"><div class="label">Password<small>saved: <span data-show="wifiPASS" data-fmt="raw">—</span></small></div>' +
+		'<input type="text" id="pass" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Password" aria-label="Wi-Fi password"><button class="btn" type="button" data-save="pass">Set</button></div>' +
+		hHead('Maintenance', 'cpu') +
+		'<div class="actions"><a class="btn ghost" href="/update">' + icon('upload') + 'Firmware update</a>' +
+		'<button class="btn danger" type="button" id="Reboot">' + icon('power') + 'Reboot</button></div>';
+
+	var html = '';
+	Object.keys(p).forEach(function (k) { html += '<section class="panel" data-panel="' + k + '">' + p[k] + '</section>'; });
+	$('#panels').innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// WebSocket
+// ---------------------------------------------------------------------------
+var gateway = 'ws://' + window.location.hostname + '/ws';
+var websocket = null;
+var lastMessage = 0, connectStarted = 0, reconnectTimer = null;
+var pendingAck = null; // {at, apply:{key:value}} for the toast + "device:" values
+
+function initWebSocket() {
+	clearTimeout(reconnectTimer); reconnectTimer = null;
+	setConn('connecting');
+	connectStarted = Date.now();
+	var ws;
+	try { ws = new WebSocket(gateway); } catch (e) { scheduleReconnect(); return; }
+	websocket = ws;
+	ws.onopen = function () { if (ws === websocket) { onOpen(); } };
+	ws.onclose = function () { if (ws === websocket) { setConn('off'); scheduleReconnect(); } };
+	ws.onerror = function () {};
+	ws.onmessage = function (e) { if (ws === websocket) { onMessage(e); } };
+}
+
+function scheduleReconnect() {
+	if (!reconnectTimer) { reconnectTimer = setTimeout(initWebSocket, 2000); }
+}
+
+function reconnectNow() {
+	var old = websocket;
+	websocket = null;
+	if (old) {
+		old.onopen = old.onclose = old.onmessage = old.onerror = null;
+		try { old.close(); } catch (e) {}
+	}
+	initWebSocket();
+}
+
+// no message for max(6 s, 3 x temperature sampling interval) -> reconnect
+function watchdogTimeout() {
+	var t = num(S.tempUpdate);
+	return Math.max(6000, (isFinite(t) && t > 0 ? t : 1) * 3000);
+}
+function isStale() { return Date.now() - lastMessage > watchdogTimeout(); }
+
+setInterval(function () {
+	if (!websocket) { return; }
+	if (websocket.readyState === WebSocket.OPEN && isStale()) { reconnectNow(); }
+	else if (websocket.readyState === WebSocket.CONNECTING && Date.now() - connectStarted > 8000) { reconnectNow(); }
+}, 1000);
+
+document.addEventListener('visibilitychange', function () {
+	if (document.visibilityState !== 'visible') { return; }
+	if (!websocket || websocket.readyState !== WebSocket.OPEN || isStale()) { reconnectNow(); }
+});
+
+function doSend(message) {
+	if (websocket && websocket.readyState === WebSocket.OPEN) {
+		websocket.send(message);
+		return true;
+	}
+	return false;
+}
+
+function onOpen() {
+	lastMessage = Date.now();
+	setConn('on');
+	// same order as the old page: time sync, then ask for all settings
+	var today = new Date();
+	doSend(JSON.stringify({hours: today.getHours(), minutes: today.getMinutes()}));
+	doSend(JSON.stringify({requestInfo: true}));
+}
+
+// user action -> controller. `apply` = controller keys to update once acknowledged.
+function sendUser(obj, apply) {
+	if (!doSend(JSON.stringify(obj))) {
+		toast('Not connected – change not sent');
+		return false;
+	}
+	pendingAck = {at: Date.now(), apply: apply || {}};
+	return true;
+}
+
+function onMessage(event) {
+	lastMessage = Date.now();
+	var data;
+	try { data = JSON.parse(event.data); } catch (e) { return; }
+	if (!data || typeof data !== 'object') { return; }
+	Object.keys(data).forEach(function (key) { handleKey(key, data[key]); });
+	scheduleRender();
+}
+
+function handleKey(key, value) {
+	S[key] = value;
+	switch (key) {
+		case 'recMsg': ack(value); return;
+		case 'updateGraph': drawChart1(); if (isOn(value)) { drawChart2(); } return;
+		case 'temp1': case 'temp2': case 'temp3': case 'temp4':
+		case 'temp6': case 'temp7': case 'humid1': case 'humid2':
+			alarmDirty = true; return;
+	}
+	var ck = IN[key] || key;
+	$$('[data-key="' + ck + '"]').forEach(function (el) { setControl(el, value); });
+	if (/^(soilAlarm|airAlarm|daySoilTemp|nightSoilTemp|alarmRange|targetAirTemp|lights|probeCount)/.test(key)) { alarmDirty = true; }
+}
+
+function setControl(el, value) {
+	if (el.type === 'checkbox') { el.checked = isOn(value); return; }
+	if (el === document.activeElement && el.type !== 'range' && el.tagName !== 'SELECT') { return; }
+	var v = value === null || value === undefined ? '' : String(value);
+	if (el.tagName === 'SELECT') {
+		if (!$$('option', el).some(function (o) { return o.value === v; })) {
+			var o = document.createElement('option'); o.value = v; o.textContent = v + ' (device)'; el.appendChild(o);
+		}
+	}
+	el.value = v;
+	if (el.type === 'range') { var out = $('[data-out="' + el.dataset.key + '"]'); if (out) { out.textContent = el.value; } }
+}
+
+var ackTimer = null;
+function ack(value) {
+	var pill = $('#conn');
+	pill.classList.add('ack');
+	pill.textContent = 'Received';
+	clearTimeout(ackTimer);
+	ackTimer = setTimeout(function () { pill.classList.remove('ack'); setConn(websocket && websocket.readyState === WebSocket.OPEN ? 'on' : 'off'); }, 800);
+	if (pendingAck && Date.now() - pendingAck.at < 5000) {
+		Object.keys(pendingAck.apply).forEach(function (k) { S[k] = pendingAck.apply[k]; });
+		pendingAck = null;
+		if (isOn(value)) { toast('Saved on the controller'); }
+		alarmDirty = true;
+		scheduleRender();
+	}
+}
+
+var connState = '';
+function setConn(state) {
+	connState = state;
+	var pill = $('#conn');
+	if (pill.classList.contains('ack') && state === 'on') { return; }
+	pill.classList.remove('on', 'off', 'ack');
+	pill.classList.add(state === 'on' ? 'on' : 'off');
+	pill.textContent = state === 'on' ? 'Online' : state === 'connecting' ? 'Connecting' : 'Offline';
+}
+
+// ---------------------------------------------------------------------------
+// controls -> controller (same keys and value types as the old page)
+// ---------------------------------------------------------------------------
+document.addEventListener('change', function (e) {
+	var el = e.target, key = el.dataset && el.dataset.key;
+	if (!key) { return; }
+	if (el.type === 'checkbox') {
+		// boolean, like updateButton(this.id, this.checked)
+		var obj = {}; obj[key] = el.checked;
+		var apply = {}; apply[devKey(key)] = el.checked;
+		if (!sendUser(obj, apply)) { el.checked = !el.checked; return; }
+		$$('[data-key="' + key + '"]').forEach(function (o) { o.checked = el.checked; });
+		S[devKey(key)] = el.checked; // controller state follows the request
+		alarmDirty = true;
+		scheduleRender();
+	} else if (el.tagName === 'SELECT' || el.type === 'range') {
+		// string value, like updateNumber(this.id, this.value) / updateSlider(this.id, this.value)
+		var o2 = {}; o2[key] = el.value;
+		var a2 = {}; a2[devKey(key)] = el.value;
+		sendUser(o2, a2);
+	}
+});
+
+document.addEventListener('input', function (e) {
+	var el = e.target;
+	if (el.type === 'range' && el.dataset.key) { var out = $('[data-out="' + el.dataset.key + '"]'); if (out) { out.textContent = el.value; } }
+});
+
+function saveField(key) {
+	var input = document.getElementById(key);
+	if (!input) { return; }
+	var value = input.value;
+	if (value.trim() === '') { toast('Enter a value first'); input.focus(); return; }
+	if (input.type === 'number' && !isFinite(parseFloat(value))) { toast('Not a number'); input.focus(); return; }
+	var obj = {}; obj[key] = value; // string, like updateNumber(key, input.value) / updateText(key, input.value)
+	var apply = {};
+	if (key !== 'ssid' && key !== 'pass') { apply[devKey(key)] = value; }
+	sendUser(obj, apply);
+}
+
+document.addEventListener('click', function (e) {
+	var t = e.target.closest ? e.target.closest('button, [data-open]') : null;
+	if (!t) { return; }
+	if (t.dataset.save) { saveField(t.dataset.save); }
+	else if (t.dataset.lights) { saveLights(t.dataset.lights); }
+	else if (t.dataset.open) { openSheet(t.dataset.open); }
+	else if (t.dataset.tab) { showTab(t.dataset.tab); }
+	else if (t.hasAttribute('data-close')) { closeSheet(); }
+	else if (t.id === 'Reboot') { reboot(t); }
+});
+
+document.addEventListener('keydown', function (e) {
+	if (e.key === 'Escape') { closeSheet(); return; }
+	if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+		var row = e.target.closest('.frow, .timepair');
+		var btn = row && $('button', row);
+		if (btn) { e.preventDefault(); btn.click(); }
+	}
+});
+
+function saveLights(i) {
+	var on = $('#lights' + i + 'on').value, off = $('#lights' + i + 'off').value;
+	if (!on || !off) { toast('Enter both times first'); return; }
+	var obj = {};
+	obj['lights' + i + 'ON'] = on;   // one message with both keys, ON first,
+	obj['lights' + i + 'OFF'] = off; // exactly like updateLightSchedule()
+	if (sendUser(obj)) {
+		S['lights' + i + 'ON'] = on; S['lights' + i + 'OFF'] = off; // the old page also showed it right away
+		scheduleRender();
+	}
+}
+
+var rebootArmed = 0;
+function reboot(btn) {
+	if (Date.now() - rebootArmed > 4000) {
+		rebootArmed = Date.now();
+		btn.lastChild.textContent = 'Tap again to reboot';
+		setTimeout(function () { btn.lastChild.textContent = 'Reboot'; }, 4000);
+		return;
+	}
+	rebootArmed = 0;
+	btn.lastChild.textContent = 'Reboot';
+	if (sendUser({Reboot: true})) { toast('Rebooting…'); }
+}
+
+// ---------------------------------------------------------------------------
+// sheet + tabs
+// ---------------------------------------------------------------------------
+var currentTab = store('gh-tab') || 'temp';
+function openSheet(tab) {
+	showTab(tab || currentTab);
+	$('#settingsSheet').classList.add('open');
+	$('#backdrop').classList.add('open');
+	document.body.classList.add('sheet-open');
+}
+function closeSheet() {
+	$('#settingsSheet').classList.remove('open');
+	$('#backdrop').classList.remove('open');
+	document.body.classList.remove('sheet-open');
+}
+function showTab(tab) {
+	if (!$('[data-panel="' + tab + '"]')) { tab = 'temp'; }
+	currentTab = tab; store('gh-tab', tab);
+	$$('#tabs button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+	$$('.panel').forEach(function (p) { p.classList.toggle('active', p.dataset.panel === tab); });
+	var btn = $('#tabs [data-tab="' + tab + '"]');
+	if (btn && btn.scrollIntoView) { btn.scrollIntoView({block: 'nearest', inline: 'nearest'}); }
+	$('#settingsSheet').scrollTop = 0;
+}
+$('#settingsBtn').addEventListener('click', function () { openSheet(); });
+$('#backdrop').addEventListener('click', closeSheet);
+
+// ---------------------------------------------------------------------------
+// rendering of read-only values
+// ---------------------------------------------------------------------------
+var renderQueued = false;
+function scheduleRender() {
+	if (renderQueued) { return; }
+	renderQueued = true;
+	(window.requestAnimationFrame || setTimeout)(function () { renderQueued = false; render(); });
+}
+
+function probeAvailable(i) { var n = parseInt(S.probeCountT, 10); return isNaN(n) || i <= n; }
+function dhtAvailable(i) { var n = parseInt(S.probeCountH, 10); return isNaN(n) || i <= n; }
+
+function soilTarget(i) {
+	var day = isOn(S[i <= 2 ? 'lights' + i : 'lights3']);
+	return {t: num(S[(day ? 'day' : 'night') + 'SoilTemp' + i]), day: day, range: num(S['tempRange' + i]), alarm: num(S['alarmRange' + i])};
+}
+
+function render() {
+	$$('[data-show]').forEach(function (el) {
+		var k = el.dataset.show, v = S[k], txt;
+		if (v === undefined || v === null || v === '') { txt = /lights\dO/.test(k) ? '--:--' : '—'; }
+		else if (el.dataset.fmt === 'raw' || typeof v === 'string' && /^\d\d:\d\d/.test(v)) { txt = String(v); }
+		else if (/^fanspeed/.test(k)) { txt = fmt(v, 0); }
+		else { txt = fmt(v, 1); }
+		if (el.textContent !== txt) { el.textContent = txt; }
+	});
+	$$('[data-bar]').forEach(function (el) {
+		var n = num(S[el.dataset.bar]);
+		el.style.width = (isFinite(n) ? Math.max(0, Math.min(100, n)) : 0) + '%';
+	});
+	$$('[data-target]').forEach(function (el) {
+		var tg = soilTarget(+el.dataset.target);
+		el.textContent = isFinite(tg.t) ? tg.t.toFixed(1) + ' °C' + (isFinite(tg.range) ? ' ±' + tg.range.toFixed(1) : '') + (tg.day ? ' · day' : ' · night') : '—';
+	});
+	$$('[data-probe]').forEach(function (el) { el.classList.toggle('na', !probeAvailable(+el.dataset.probe)); $('.reading', el).classList.toggle('na', !probeAvailable(+el.dataset.probe)); });
+	$$('[data-dht]').forEach(function (el) { el.classList.toggle('na', !dhtAvailable(+el.dataset.dht)); });
+	renderRelays();
+	if (alarmDirty) { alarmDirty = false; checkAlarms(); }
+	var rtc = $('[data-rtc]');
+	if (rtc) { rtc.textContent = S.rtcTime ? ' · controller clock ' + S.rtcTime : ''; }
+}
+
+function renderRelays() {
+	var html = '';
+	for (var i = 1; i <= 6; i++) {
+		var f = parseInt(S['relay' + i + 'f'], 10), connected = isOn(S['relay' + i + 'c']), manual = isOn(S['relay' + i + 'm']);
+		var name = 'Unknown';
+		RELAY_FUNCS.forEach(function (o) { if (o[0] === f) { name = o[1]; } });
+		if (isNaN(f)) { name = '—'; }
+		var stateKey = FUNC_STATE[f];
+		var on = stateKey ? isOn(S[stateKey]) : (f === 0 && manual);
+		var known = stateKey || f === 0;
+		var bits = [name];
+		if (!connected) { bits.push('not connected'); } else if (manual) { bits.push('manual'); }
+		html += '<div class="relay' + (on && connected ? ' on' : '') + (!connected ? ' unused' : '') + '" title="' + esc(bits.join(' · ')) + '">' +
+			'<span class="dot"></span><div class="t"><b>Relay ' + i + (known && connected ? (on ? ' · on' : ' · off') : '') + '</b><span>' + esc(bits.join(' · ')) + '</span></div></div>';
+	}
+	var box = $('#relayOverview');
+	if (box.innerHTML !== html) { box.innerHTML = html; }
+}
+
+// ---------------------------------------------------------------------------
+// clock (no moment.js / jQuery)
+// ---------------------------------------------------------------------------
+var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function tick() {
+	var d = new Date();
+	var time = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+	$('#clock .long').textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() + ' · ' + time;
+	$('#clock .short').textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()].slice(0, 3) + ' · ' + time.slice(0, 5);
+}
+
+// ---------------------------------------------------------------------------
+// charts (offline MiniChart, Highcharts-like API)
+// ---------------------------------------------------------------------------
+var chartT1, chartT2;
+function cssVar(name, fallback) { var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fallback; }
+function chartTheme() {
+	return {text: cssVar('--text-dim', '#9aa4b1'), grid: cssVar('--border', '#2b323c'),
+		colors: [cssVar('--c-soil', '#f0883e'), cssVar('--c-air', '#e3b341'), cssVar('--c-fan', '#3fb950'), cssVar('--c-humid', '#39c5cf')]};
+}
+function makeChart(id, n) {
+	var th = chartTheme();
+	return new MiniChart({
+		chart: {renderTo: id, backgroundColor: 'transparent', textColor: th.text, gridColor: th.grid, height: window.innerWidth < 600 ? 260 : 300},
+		title: {text: ''},
+		yAxis: {title: {text: '°C / %'}},
+		tooltip: {valueSuffix: ''},
+		series: [
+			{name: 'Soil ' + n + ' °C', color: th.colors[0]},
+			{name: 'Air ' + n + ' °C', color: th.colors[1]},
+			{name: 'Fan ' + n + ' %', color: th.colors[2]},
+			{name: 'Humidity ' + n + ' %', color: th.colors[3]}
+		]
+	});
+}
+function retheme() {
+	var th = chartTheme();
+	[chartT1, chartT2].forEach(function (ch) {
+		if (!ch) { return; }
+		ch.textColor = th.text; ch.gridColor = th.grid;
+		ch.series.forEach(function (s, i) { s.color = th.colors[i]; });
+		ch.redraw();
+	});
+}
+function addPoints(chart, values) {
+	var x = (new Date()).getTime();
+	values.forEach(function (v, i) {
+		var y = parseFloat(v);
+		if (!isFinite(y)) { return; }
+		var s = chart.series[i];
+		s.addPoint([x, y], false, s.data.length > MAX_POINTS);
+	});
+	chart.redraw();
+}
+function drawChart1() { if (chartT1) { addPoints(chartT1, [S.temp1, S.temp6, S.fanspeed1, S.humid1]); } }
+function drawChart2() { if (chartT2) { addPoints(chartT2, [S.temp2, S.temp7, S.fanspeed2, S.humid2]); } }
+
+// ---------------------------------------------------------------------------
+// alarms (alarm.mp3, mute)
+// ---------------------------------------------------------------------------
+var alarmDirty = false, alarmKeys = '', silencedKeys = '', ringTimer = null;
+var muted = store('gh-muted') === '1';
+
+function activeAlarms() {
+	var list = [];
+	var names = {1: 'Peppers', 2: 'Tomatoes', 3: 'Seeds 3', 4: 'Seeds 4'};
+	for (var i = 1; i <= 4; i++) {
+		if (!isOn(S['soilAlarm' + i]) || !probeAvailable(i)) { continue; }
+		var t = num(S['temp' + i]), tg = soilTarget(i);
+		if (!isFinite(t) || !isFinite(tg.t) || !isFinite(tg.alarm)) { continue; }
+		if (Math.abs(t - tg.t) > tg.alarm) { list.push({k: 's' + i, text: names[i] + ' soil ' + t.toFixed(1) + ' °C (target ' + tg.t.toFixed(1) + ' ±' + tg.alarm.toFixed(1) + ')'}); }
+	}
+	for (var j = 1; j <= 2; j++) {
+		if (!isOn(S['airAlarm' + j]) || !dhtAvailable(j)) { continue; }
+		var a = num(S['temp' + (j + 5)]), ta = num(S['targetAirTemp' + j]), ar = num(S['alarmRange' + j]);
+		if (!isFinite(a) || !isFinite(ta) || !isFinite(ar)) { continue; }
+		if (a > ta + ar) { list.push({k: 'a' + j, text: names[j] + ' air ' + a.toFixed(1) + ' °C (max ' + (ta + ar).toFixed(1) + ')'}); }
+	}
+	return list;
+}
+
+function checkAlarms() {
+	var list = activeAlarms();
+	var keys = list.map(function (a) { return a.k; }).join(',');
+	$('#alarmBanner').classList.toggle('show', list.length > 0);
+	$('#alarmText').textContent = list.map(function (a) { return a.text; }).join(' · ');
+	$('#muteBtn').classList.toggle('alarm', list.length > 0 && !muted);
+	if (!list.length) { stopSound(); silencedKeys = ''; }
+	else if (keys !== alarmKeys && keys !== silencedKeys && !muted) {
+		// a new alarm condition: ring (like playSound1(repeats) of the old page)
+		var isNew = list.some(function (a) { return alarmKeys.split(',').indexOf(a.k) < 0; });
+		if (isNew) { playSound(5); }
+	}
+	alarmKeys = keys;
+}
+
+function playOnce() {
+	try { var p = new Audio('alarm.mp3').play(); if (p && p.catch) { p.catch(function () {}); } } catch (e) {}
+}
+function playSound(repeats) {
+	stopSound();
+	var rings = 1;
+	playOnce();
+	if (repeats > 1) {
+		ringTimer = setInterval(function () {
+			if (muted || rings >= repeats) { stopSound(); return; }
+			rings++;
+			playOnce();
+		}, 2900);
+	}
+}
+function stopSound() { clearInterval(ringTimer); ringTimer = null; }
+
+function renderMute() {
+	var b = $('#muteBtn');
+	b.classList.toggle('active', muted);
+	b.setAttribute('aria-pressed', muted ? 'true' : 'false');
+	b.title = muted ? 'Alarm sound muted – tap to unmute' : 'Mute alarm sound';
+	$('use', b).setAttribute('href', muted ? '#i-bell-off' : '#i-bell');
+}
+$('#muteBtn').addEventListener('click', function () {
+	muted = !muted;
+	store('gh-muted', muted ? '1' : '0');
+	if (muted) { stopSound(); }
+	renderMute();
+	alarmDirty = true; scheduleRender();
+	toast(muted ? 'Alarm sound muted' : 'Alarm sound on');
+});
+$('#silenceBtn').addEventListener('click', function () { stopSound(); silencedKeys = alarmKeys; toast('Alarm silenced'); });
+
+// ---------------------------------------------------------------------------
+// toast
+// ---------------------------------------------------------------------------
+var toastTimer = null;
+function toast(msg) {
+	var t = $('#toast');
+	t.textContent = msg;
+	t.classList.add('show');
+	clearTimeout(toastTimer);
+	toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+}
+
+// ---------------------------------------------------------------------------
+// start
+// ---------------------------------------------------------------------------
+buildPanels();
+showTab(currentTab);
+renderMute();
+render();
+tick();
+setInterval(tick, 1000);
+chartT1 = makeChart('chart-temperature1', 1);
+chartT2 = makeChart('chart-temperature2', 2);
+if (window.matchMedia) {
+	var mq = window.matchMedia('(prefers-color-scheme: light)');
+	if (mq.addEventListener) { mq.addEventListener('change', retheme); } else if (mq.addListener) { mq.addListener(retheme); }
+}
+initWebSocket();
+
+// for testing from the console
+window.greenhouse = {state: S, send: doSend, charts: [chartT1, chartT2]};
+})();
+</script>
+<script src="mode.js" defer></script>
+</body>
+</html>
