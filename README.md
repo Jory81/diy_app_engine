@@ -12,6 +12,18 @@ is generated from them.
 
 ![mode switch](docs/mode_card.png)
 
+## Phone app: ESP Device Hub
+
+[app/](app/) is an Android app (Flutter) that finds all your ESP32 devices — this firmware,
+the single-mode BBQ controller and greenhouse — at home or on the `ESP32-AP` network
+(192.168.4.1), remembers them and opens their page. For this firmware it also offers
+*Switch mode*. Download the APK from the *Actions* tab (artifact `esp-device-hub-apk`); see
+[app/README.md](app/README.md).
+
+| Devices | Switch mode |
+| --- | --- |
+| ![devices](app/screenshots/device-list.png) | ![switch](app/screenshots/switch-mode.png) |
+
 ## Switching modes
 
 - **Web page:** scroll to the bottom, *Device mode*, tap the other mode. The controller
