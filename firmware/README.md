@@ -11,10 +11,17 @@ esptool.py --chip esp32 --baud 921600 write_flash 0x10000 firmware.bin 0x290000 
 
 ## Clean install (new board, or when something is badly broken)
 
-Erases everything, including the saved settings:
+One file contains everything (bootloader, partition table, firmware, web page). It erases
+everything, including the saved settings. There are two copies of the same image; use the one
+whose name matches the address you flash it to:
+
+| File | Flash address |
+| --- | --- |
+| `diy-app-engine-full-flash-0x1000.bin` | `0x1000` (the default address in the esptool web page) |
+| `diy-app-engine-full-flash-0x0.bin` | `0x0` |
 
 ```
-esptool.py --chip esp32 --baud 921600 write_flash 0x0 diy-app-engine-full-flash.bin
+esptool.py --chip esp32 --baud 921600 write_flash 0x1000 diy-app-engine-full-flash-0x1000.bin
 ```
 
 or, the same with the separate files:
@@ -23,8 +30,13 @@ or, the same with the separate files:
 esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin 0x290000 spiffs.bin
 ```
 
+A wrong address cannot damage the ESP32: it just won't start. Connect again and flash the
+right file at the right address.
+
 No Python? Use the browser flasher https://espressif.github.io/esptool-js/ (Chrome/Edge,
-USB cable): add the files with the addresses above and press *Program*.
+USB cable): *Connect*, keep Flash Address `0x1000`, choose `diy-app-engine-full-flash-0x1000.bin`
+and press *Program*. If no COM port shows up, install the CP210x or CH340 USB driver; if
+connecting fails, hold the BOOT button while clicking *Connect*.
 
 ## Over wifi from the greenhouse firmware (no cable)
 
