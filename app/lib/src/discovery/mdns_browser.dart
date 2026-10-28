@@ -41,7 +41,10 @@ class MdnsBrowser {
         debugPrint('mDNS browse failed: $e');
       } finally {
         if (discovery != null) {
-          await nsd.stopDiscovery(discovery).catchError((Object _) {});
+          await nsd
+              .stopDiscovery(discovery)
+              .timeout(const Duration(seconds: 2))
+              .catchError((Object _) {});
         }
         await controller.close();
       }

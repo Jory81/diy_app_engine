@@ -51,7 +51,7 @@ class DeviceHub extends ChangeNotifier {
   final Map<String, bool> _online = {};
   final Set<String> _switching = {};
   bool _scanning = false;
-  Future<void>? _currentScan;
+  Future<Set<String>>? _currentScan;
   WifiDetails? _wifi;
 
   /// Saved devices, sorted by name for a stable list.
@@ -77,16 +77,17 @@ class DeviceHub extends ChangeNotifier {
   }
 
   /// Runs a full discovery; concurrent calls share the running scan.
-  Future<void> scan() => _currentScan ??= _scan().whenComplete(() {
+  /// Returns the ids of the devices that answered.
+  Future<Set<String>> scan() => _currentScan ??= _scan().whenComplete(() {
     _currentScan = null;
   });
 
-  Future<void> _scan() async {
+  Future<Set<String>> _scan() async {
     _scanning = true;
     notifyListeners();
+    final foundIds = <String>{};
     try {
       final hosts = _devices.map((d) => d.host).toList();
-      final foundIds = <String>{};
       await for (final found in discovery.discover(knownHosts: hosts)) {
         foundIds.add(found.info.id);
         _applyFound(found);
@@ -101,6 +102,7 @@ class DeviceHub extends ChangeNotifier {
       notifyListeners();
       await _save();
     }
+    return foundIds;
   }
 
   /// Polls `/info` of every saved device to update online/offline.
@@ -112,6 +114,9 @@ class DeviceHub extends ChangeNotifier {
         device.host,
         timeout: const Duration(seconds: 2),
       );
+      // A scan may have found the device at another address meanwhile: then
+      // this answer (or silence) from the old address says nothing about it.
+      if (_byKey(device.key)?.host != device.host) return;
       // A different id at the same IP means DHCP gave it to another device.
       final isSame =
           info != null && (device.id == null || device.id == info.id);
@@ -129,20 +134,21 @@ class DeviceHub extends ChangeNotifier {
   /// by id (it may have a new DHCP address or switched to soft-AP).
   /// Returns the up-to-date device, or null if it cannot be found.
   Future<Device?> locate(Device device) async {
+    // The saved list may already know a newer address (from a scan).
+    final current = _byKey(device.key) ?? device;
     final info = await infoClient.fetch(
-      device.host,
+      current.host,
       timeout: const Duration(seconds: 3),
     );
-    if (info != null && (device.id == null || info.id == device.id)) {
-      _applyFound(Discovered(info, device.host));
+    if (info != null && (current.id == null || info.id == current.id)) {
+      _applyFound(Discovered(info, current.host));
       await _save();
       return _byKey(info.id);
     }
-    final id = device.id;
+    final id = current.id;
     if (id == null) return null;
-    await scan();
-    final found = _byKey(id);
-    return found != null && _online[found.key] == true ? found : null;
+    final foundIds = await scan();
+    return foundIds.contains(id) ? _byKey(id) : null;
   }
 
   /// Switches a multi-mode device to [mode] (`POST /mode`), then waits for
@@ -172,9 +178,9 @@ class DeviceHub extends ChangeNotifier {
         }
       }
       // It may have come back at another address: look for it by id.
-      await scan();
+      final foundIds = await scan();
       final found = _byKey(id);
-      return found?.type == mode && _online[id] == true
+      return found?.type == mode && foundIds.contains(id)
           ? SwitchOutcome.switched
           : SwitchOutcome.notConfirmed;
     } finally {

@@ -74,14 +74,16 @@ App traffic then goes out over mobile data and `192.168.4.1` is unreachable.
 
 * At start it registers a `NetworkCallback` for `TRANSPORT_WIFI` (without
   requiring `NET_CAPABILITY_INTERNET`) and binds the **whole app process** to
-  the Wi-Fi network as soon as one is available. This covers Dart's HTTP
-  sockets, mDNS and the WebView (its network stack runs in the app process),
-  so the device UI and its websocket work on the soft-AP too.
-* **Chosen behaviour: stay bound to any Wi-Fi, also when it has internet.**
-  The app only ever talks to devices on the local Wi-Fi, so this is always
-  correct and avoids races when switching between home Wi-Fi and soft-AP.
-  When the Wi-Fi is lost the process is unbound (falls back to the default
-  network) and re-bound when a Wi-Fi comes back. Each scan also re-binds.
+  a Wi-Fi network **that has no internet** (the soft-AP). This covers Dart's
+  HTTP sockets, mDNS and the WebView (its network stack runs in the app
+  process), so the device UI and its websocket work on the soft-AP too.
+* **Chosen behaviour: only bind while the Wi-Fi has no internet.** A Wi-Fi
+  with internet (home Wi-Fi) is already Android's default network, so the app
+  then connects like any other app and like the browser. Binding there anyway
+  could pick the wrong network object (while switching networks, or a VPN
+  running over Wi-Fi) and made every request fail while the browser worked.
+  The choice is re-evaluated whenever a Wi-Fi appears, disappears or gets or
+  loses internet, and before each scan. VPNs are never chosen.
 * The same channel (`esp_device_hub/network`) returns the Wi-Fi IP, prefix
   and gateway from `LinkProperties` (fallback: `WifiManager.dhcpInfo`), so
   **no location permission** is needed.

@@ -37,6 +37,9 @@ class DiscoveryService {
   static const sweepConcurrency = 32;
   static const mdnsDuration = Duration(seconds: 5);
 
+  /// Upper limit for a whole scan, so a stuck lookup never spins forever.
+  static const scanTimeout = Duration(seconds: 30);
+
   Stream<Discovered> discover({Iterable<String> knownHosts = const []}) {
     final controller = StreamController<Discovered>();
     final seenIds = <String>{};
@@ -63,11 +66,19 @@ class DiscoveryService {
           ? const <String>[]
           : subnetHosts(wifi!.ip!, exclude: direct);
 
-      await Future.wait([
-        _browseMdns(emit),
-        Future.wait(direct.map((h) => probe(h, const Duration(seconds: 2)))),
-        forEachLimited(sweep, sweepConcurrency, (h) => probe(h, sweepTimeout)),
-      ]);
+      try {
+        await Future.wait([
+          _browseMdns(emit),
+          Future.wait(direct.map((h) => probe(h, const Duration(seconds: 2)))),
+          forEachLimited(
+            sweep,
+            sweepConcurrency,
+            (h) => probe(h, sweepTimeout),
+          ),
+        ]).timeout(scanTimeout);
+      } on TimeoutException {
+        // keep what was found so far
+      }
       await controller.close();
     }();
     return controller.stream;

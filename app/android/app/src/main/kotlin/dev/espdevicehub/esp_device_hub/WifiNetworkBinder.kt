@@ -21,12 +21,13 @@ import java.net.Inet4Address
  * This covers every socket of the process: Dart's HTTP client, mDNS and the
  * in-app WebView (its network stack runs inside the app process).
  *
- * Behaviour: the binding is kept whenever ANY Wi-Fi is connected, also when
- * that Wi-Fi has internet. The app only talks to devices on the local Wi-Fi,
- * so this is always correct, and it avoids races when switching between the
- * home Wi-Fi and the soft-AP. When the Wi-Fi is lost the process is unbound
- * (so it falls back to the default network) and re-bound as soon as another
- * Wi-Fi appears. External apps (e.g. "open in browser") are not affected.
+ * Behaviour: the process is only bound while the Wi-Fi has NO internet (the
+ * soft-AP case). A Wi-Fi with internet is already Android's default network,
+ * so the app then connects like any other app (and like the browser); binding
+ * there only adds risk, e.g. picking the wrong network object while switching
+ * networks or with a VPN, which made every request fail. The decision is made
+ * again whenever a Wi-Fi appears, disappears or gets/loses internet.
+ * External apps (e.g. "open in browser") are not affected.
  */
 class WifiNetworkBinder(context: Context) {
     private val connectivity =
@@ -40,14 +41,19 @@ class WifiNetworkBinder(context: Context) {
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            bind(network)
+            bindToWifi()
+        }
+
+        // e.g. a Wi-Fi that turns out to have internet a few seconds after connecting
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            bindToWifi()
         }
 
         override fun onLost(network: Network) {
             if (network == boundNetwork) {
                 unbind()
-                findWifiNetwork()?.let { bind(it) }
             }
+            bindToWifi()
         }
     }
 
@@ -79,15 +85,36 @@ class WifiNetworkBinder(context: Context) {
         unbind()
     }
 
-    /** Binds to the current Wi-Fi network; returns false if there is none. */
+    /**
+     * Binds to the current Wi-Fi when it has no internet (soft-AP), otherwise
+     * makes sure the process is not bound. Returns true when the device
+     * network is reachable: bound to an offline Wi-Fi, or using the default
+     * network because the Wi-Fi has internet.
+     */
     fun bindToWifi(): Boolean {
-        val network = findWifiNetwork() ?: return false
+        val network = findWifiNetwork()
+        if (network == null) {
+            if (boundNetwork != null) unbind()
+            return false
+        }
+        if (hasInternet(network)) {
+            if (boundNetwork != null) unbind()
+            return true
+        }
+        if (network == boundNetwork && connectivity.boundNetworkForProcess == network) {
+            return true
+        }
         return bind(network)
     }
+
+    private fun hasInternet(network: Network): Boolean =
+        connectivity.getNetworkCapabilities(network)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
 
     fun unbind() {
         connectivity.bindProcessToNetwork(null)
         boundNetwork = null
+        Log.i(TAG, "process unbound (default network)")
     }
 
     /** Details of the current Wi-Fi network for discovery. */
@@ -119,12 +146,19 @@ class WifiNetworkBinder(context: Context) {
         return ok
     }
 
+    /** The Wi-Fi network the phone uses now: Android's active one if that is Wi-Fi, else any Wi-Fi. */
     @Suppress("DEPRECATION") // allNetworks: still the simplest synchronous lookup
-    private fun findWifiNetwork(): Network? =
-        connectivity.allNetworks.firstOrNull { network ->
-            connectivity.getNetworkCapabilities(network)
-                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+    private fun findWifiNetwork(): Network? {
+        fun isWifi(network: Network): Boolean {
+            val caps = connectivity.getNetworkCapabilities(network) ?: return false
+            // a VPN running over Wi-Fi also reports TRANSPORT_WIFI; it is not the local network
+            return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
         }
+        connectivity.activeNetwork?.let { if (isWifi(it)) return it }
+        return connectivity.allNetworks.firstOrNull { isWifi(it) }
+    }
 
     /** Fallback when LinkProperties has no default route (no location needed). */
     @Suppress("DEPRECATION")

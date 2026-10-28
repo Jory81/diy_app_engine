@@ -54,6 +54,11 @@ class _DevicePageState extends State<DevicePage> {
     final found = await widget.hub.locate(_device);
     if (!mounted) return;
     if (found == null) {
+      // keep the newest saved copy, so "Try again" starts from its address
+      _device = widget.hub.devices.firstWhere(
+        (d) => d.key == _device.key,
+        orElse: () => _device,
+      );
       setState(() {
         _phase = _Phase.failed;
         _error =
@@ -71,8 +76,10 @@ class _DevicePageState extends State<DevicePage> {
       return;
     }
     final controller = _controller ??= _createController();
+    // show the WebView (with its progress bar) right away instead of waiting
+    // for the page in the "Connecting…" screen
+    setState(() => _phase = _Phase.ready);
     await controller.loadRequest(_device.uiUri);
-    if (mounted) setState(() => _phase = _Phase.ready);
   }
 
   WebViewController _createController() {
