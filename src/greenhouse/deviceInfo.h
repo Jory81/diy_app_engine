@@ -6,7 +6,7 @@
 
 #define DEVICE_TYPE "greenhouse"
 #define DEVICE_NAME "Greenhouse"
-#define FIRMWARE_VERSION "2.1"
+#define FIRMWARE_VERSION "3.0-beta"
 
 String deviceId(){
   uint8_t mac[6];

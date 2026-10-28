@@ -60,7 +60,7 @@ float pt100[4];
 float dhtT[2];
 float dhtH[2];
 };
-Sensors concept, valid, cal {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+Sensors raw, valid, cal {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 struct TimeKeeping
 {

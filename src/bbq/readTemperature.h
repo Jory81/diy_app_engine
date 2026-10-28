@@ -130,7 +130,11 @@ else if (!fanManual){
   }   
 }
 //Serial.println(outputVal);
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+ledcWrite(OUTPUT_PIN1, outputVal);
+#else
 ledcWrite(ledChannel1, outputVal);
+#endif
 //ledcWrite(ledChannel2, outputVal);
 fanSpeed = map(outputVal, 0, 255, 0, 100);
 updateFanSpeed(fanSpeed);

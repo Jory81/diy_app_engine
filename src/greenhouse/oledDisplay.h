@@ -142,19 +142,19 @@ void displayOledScreen(float temp1, float temp2, float temp3, float temp4){
     display.println("Heap memory (bytes):");
 
     display.setCursor(0,10);
-    sprintf(buffer, "size:     %u", heapSize);   
+    sprintf(buffer, "size:     %" PRIu32, heapSize);   
     display.print(buffer); DEBUG_PRINTLN(buffer);
 
     display.setCursor(0,18);
-    sprintf(buffer, "free:     %u %u%%", freeHeap, freeHeapPerc); 
+    sprintf(buffer, "free:     %" PRIu32 " %u%%", freeHeap, freeHeapPerc); 
     display.print(buffer); DEBUG_PRINTLN(buffer);
 
     display.setCursor(0,26); 
-    sprintf(buffer, "min free: %u %u%%", minHeap, minHeapPerc); 
+    sprintf(buffer, "min free: %" PRIu32 " %u%%", minHeap, minHeapPerc); 
     display.print(buffer); DEBUG_PRINTLN(buffer);
     
     display.setCursor(0,34);
-    sprintf(buffer, "max alloc %u", maxAllocHeap); 
+    sprintf(buffer, "max alloc %" PRIu32, maxAllocHeap); 
     display.print(buffer); DEBUG_PRINTLN(buffer);
 
     display.display();

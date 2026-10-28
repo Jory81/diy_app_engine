@@ -64,11 +64,11 @@ void samplingHumidity(){
     if (systemParam.probeCountH > 0){
         boolean allValid = true;
         for (int sensor = 0; sensor < systemParam.probeCountH; sensor++){
-        concept.dhtH[sensor] = dht[sensor].readHumidity();
-        concept.dhtT[sensor] = dht[sensor].readTemperature();
-          if(!isnan(concept.dhtT[sensor]) && !isnan(concept.dhtH[sensor])){
-            valid.dhtT[sensor] = concept.dhtT[sensor] - cal.dhtT[sensor];
-            valid.dhtH[sensor] = concept.dhtH[sensor] - cal.dhtH[sensor];
+        raw.dhtH[sensor] = dht[sensor].readHumidity();
+        raw.dhtT[sensor] = dht[sensor].readTemperature();
+          if(!isnan(raw.dhtT[sensor]) && !isnan(raw.dhtH[sensor])){
+            valid.dhtT[sensor] = raw.dhtT[sensor] - cal.dhtT[sensor];
+            valid.dhtH[sensor] = raw.dhtH[sensor] - cal.dhtH[sensor];
             // Serial.printf("sensor %d humidity ", sensor); Serial.print(humidity[sensor]);
             // Serial.printf(" temp "); Serial.println(dhtT[sensor]);
           }

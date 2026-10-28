@@ -27,6 +27,7 @@ HALLO LEON
 #else
  #include <WiFi.h>
  #include <SPIFFS.h>
+ #include <esp_mac.h> // esp_read_mac() in deviceInfo.h (core 3 no longer includes it)
 #endif
 
 #include <Adafruit_GFX.h>
@@ -191,8 +192,12 @@ setupTempSensors();
 // ledcSetup(ledChannel, freq, resolution);
 // ledcAttachPin(OUTPUT_PIN, ledChannel);
 
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+ledcAttachChannel(OUTPUT_PIN1, freq, resolution, ledChannel1); // core 3: ledcWrite() takes the pin
+#else
 ledcSetup(ledChannel1, freq, resolution);
 ledcAttachPin(OUTPUT_PIN1, ledChannel1);
+#endif
 
 // ledcSetup(ledChannel2, freq, resolution);
 // ledcAttachPin(OUTPUT_PIN2, ledChannel2);

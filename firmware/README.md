@@ -1,6 +1,10 @@
 # Ready-made firmware (multi-mode: BBQ + greenhouse)
 
-Built for the **Wemos D1 mini32 (ESP32-WROOM, 4 MB flash)**, Arduino-ESP32 core 2.0.17,
+> **Core-3 test build** (branch `core3`, firmware 3.0-beta): the same firmware ported to
+> Arduino-ESP32 core 3.3.12, not yet tested on hardware. The tested release (core 2.0.17)
+> is on the `main` branch.
+
+Built for the **Wemos D1 mini32 (ESP32-WROOM, 4 MB flash)**, Arduino-ESP32 core 3.3.12,
 default partition table. The web page (`data/`) is included in `spiffs.bin`.
 
 ## Update (keeps your settings: wifi, targets, calibration)

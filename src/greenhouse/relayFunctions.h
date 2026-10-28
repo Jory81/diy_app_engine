@@ -330,7 +330,11 @@ if (fan1.fanState != climate1.fan || msgFanState1 == true){
   //Serial.println(outputVal);
   fan1.oldSpeed = fan1.speed;   
   //Serial.println(outputVal1);
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(OUTPUT_PIN1, fan1.speed);
+#else
   ledcWrite(ledChannel1, fan1.speed);
+#endif
   fanspeed1 = map(fan1.speed, 0, 255, 0, 100);
   //Serial.println(fanspeed1);
   notifyClientsSingleObjectByte("fanspeed1", fanspeed1);   
@@ -395,7 +399,11 @@ messageFanState2();
  if (fan2.speed != fan2.oldSpeed){
   //Serial.println(outputVal);
   fan2.oldSpeed = fan2.speed;
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(OUTPUT_PIN2, fan2.speed);
+#else
   ledcWrite(ledChannel2, fan2.speed);
+#endif
   fanspeed2 = map(fan2.speed, 0, 255, 0, 100);
   notifyClientsSingleObjectByte("fanspeed2", fanspeed2);   
   }

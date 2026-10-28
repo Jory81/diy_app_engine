@@ -208,6 +208,16 @@ void setupDHTSensors(){
 }
 
 void setupFans(){
+#if ESP_ARDUINO_VERSION_MAJOR >= 3 // core 3: ledcWrite() takes the pin
+  ledcAttachChannel(OUTPUT_PIN1, freq, resolution, ledChannel1);
+  ledcAttachChannel(OUTPUT_PIN2, freq, resolution, ledChannel2);
+  if (!fan1.connected){
+      ledcWrite(OUTPUT_PIN1, 0);
+  }
+  if (!fan2.connected){
+        ledcWrite(OUTPUT_PIN2, 0);
+  }
+#else
   ledcSetup(ledChannel1, freq, resolution);
   ledcSetup(ledChannel2, freq, resolution);
   ledcAttachPin(OUTPUT_PIN1, ledChannel1);
@@ -218,6 +228,7 @@ void setupFans(){
   if (!fan2.connected){
         ledcWrite(ledChannel2, 0);
   }
+#endif
 }
 
 void setupRelays(){
