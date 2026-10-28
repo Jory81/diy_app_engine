@@ -66,7 +66,7 @@
       </div>
       <div class="row timer-row">
         <div class="label">Timer <b class="timer-mini" id="BBQcounter-mini">0:00</b></div>
-        <button class="btn ghost timer-btn" id="timer-btn-1" onclick="toggleCounter(1)">Start timer</button>
+        <div class="timer-actions" data-counter="1"></div>
       </div>
       <div class="chips">
         <label class="chip" title="Alarm when the target temperature is reached"><input type="checkbox" id="1J1" onclick="updateButton('1J1')"><svg class="i sm"><use href="#i-bell"/></svg>At target</label>
@@ -89,7 +89,7 @@
       </div>
       <div class="row timer-row">
         <div class="label">Timer <b class="timer-mini" id="Foodcounter-mini">0:00</b></div>
-        <button class="btn ghost timer-btn" id="timer-btn-2" onclick="toggleCounter(2)">Start timer</button>
+        <div class="timer-actions" data-counter="2"></div>
       </div>
       <div class="chips">
         <label class="chip" title="Alarm when the target temperature is reached"><input type="checkbox" id="1J2" onclick="updateButton('1J2')"><svg class="i sm"><use href="#i-bell"/></svg>At target</label>
@@ -124,21 +124,22 @@
       <div class="row">
         <div class="label">BBQ timer<small id="BBQcounter-s">&nbsp;</small></div>
         <span class="reading"><span class="value" style="font-size:1.6rem" id="BBQcounter">0:00</span></span>
-        <label class="switch" title="Run BBQ timer"><input type="checkbox" id="1C1" onclick="updateButton('1C1')"><span></span></label>
+        <div class="timer-actions" data-counter="1"></div>
       </div>
       <div class="row">
         <div class="label">Food timer<small id="Foodcounter-s">&nbsp;</small></div>
         <span class="reading"><span class="value" style="font-size:1.6rem" id="Foodcounter">0:00</span></span>
-        <label class="switch" title="Run food timer"><input type="checkbox" id="1C2" onclick="updateButton('1C2')"><span></span></label>
+        <div class="timer-actions" data-counter="2"></div>
       </div>
       <div class="row">
         <div class="label">Countdown<small>Beeps when it reaches zero</small></div>
         <span class="reading"><span class="value" style="font-size:1.6rem" id="timer">0:00</span></span>
       </div>
-      <div class="field">
+      <div class="field" id="countdown-start">
         <input type="number" inputmode="numeric" placeholder="seconds" id="B1">
         <button class="btn" onclick="updateTemp('1B1')">Start</button>
       </div>
+      <div class="timer-actions hidden" id="countdown-actions"></div>
     </section>
 
     <!-- probes 3-5 (shown when more than 2 probes are configured) -->
@@ -302,6 +303,8 @@ function onLoad() {
 	// browsers only play sound after a tap: unlock audio on the first tap anywhere
 	document.addEventListener('click', unlockAudio, {once: true});
 	showSliderValue($('1Y1').value);
+	renderCounter(1);
+	renderCounter(2);
 }
 
 // ----------------------------------------------------------------------------
@@ -386,6 +389,9 @@ function onMessage(event) {
 			syncIndex++;
 			doSend('GGG23');
 			doSend('GGG24');
+			doSend('GGG25'); // BBQ timer state ("Sg"), firmware 2.1 and newer
+			doSend('GGG26'); // food timer state ("Sh")
+			doSend('GGG27'); // countdown state ("Se")
 		}
 	}
 	else if (type == 'T') {
@@ -450,6 +456,7 @@ function handleTemperatures(values) {
 	if (targetCelsius1 > 0) {
 		if ($('1D1').checked && bbq >= targetCelsius1 && timer1failsafe) {
 			doSend('1C1' + 1);
+			counterChanged(1, 1);
 			timer1failsafe = false;
 			doSend('1E1' + 0);
 		}
@@ -475,6 +482,7 @@ function handleTemperatures(values) {
 	if (targetCelsius2 > 0) {
 		if ($('1D2').checked && food >= targetCelsius2 && timer2failsafe) {
 			doSend('1C2' + 1);
+			counterChanged(2, 1);
 			timer2failsafe = false;
 			doSend('1E2' + 0);
 		}
@@ -499,8 +507,12 @@ function handleStatus(key, residu) {
 	switch (key) {
 		case 'C': drawChart(parseFloat(residu).toFixed(2)); break;
 		case 'D': drawChart1(parseFloat(residu).toFixed(2)); break;
+		case 'g': timerStateReported(1, seconds); break;
+		case 'h': timerStateReported(2, seconds); break;
+		case 'e': countdownStateReported(seconds); break;
 		case 'E':
 			$('timer').textContent = formatDuration(seconds);
+			if (countdownState == 0 && seconds > 0) { countdownChanged(1); } // running (older firmware)
 			if (seconds <= 1) { playAlarm(1, 1, 'Countdown finished'); }
 			break;
 		case 'G':
@@ -559,47 +571,98 @@ function updateButton(id) {
 		doSend(id + 0);
 	}
 	if (id == '1T1') { $('fan-mode').textContent = checked ? 'manual' : 'auto'; }
-	if (id == '1C1' || id == '1G1') { counterSwitched(1, $('1C1').checked || id == '1G1' && checked); }
-	if (id == '1C2' || id == '1G2') { counterSwitched(2, $('1C2').checked || id == '1G2' && checked); }
+	if (id == '1G1' && checked) { counterChanged(1, 1); } // started together with the timer alarm
+	if (id == '1G2' && checked) { counterChanged(2, 1); }
 }
 
 // ----------------------------------------------------------------------------
-// BBQ / food timers. The controller does not report whether a timer runs, but
-// it sends the running time ("SG"/"SH") every second only while it runs; use
-// that, so the switches are right after reloading the page as well.
+// BBQ / food timers and the countdown: Start, Pause, Resume, Stop.
+// The controller reports their state ("Sg", "Sh", "Se": 0 stopped, 1 running,
+// 2 paused). Older firmware has no pause and no state messages: then the
+// running time ("SG"/"SH"), which only arrives while a timer runs, tells the
+// state, and only Start/Stop are offered.
 // ----------------------------------------------------------------------------
 
+var STOPPED = 0, RUNNING = 1, PAUSED = 2;
+var counterState = {1: STOPPED, 2: STOPPED};
 var counterLastSeen = {1: 0, 2: 0};
-var counterIds = {1: '1C1', 2: '1C2'};
+var countdownState = STOPPED;
+var pauseSupported = false;
 
 function counterSeen(channel) {
 	counterLastSeen[channel] = Date.now();
-	showCounter(channel, true);
+	// with state messages ("Sg"/"Sh") those decide; a paused timer also sends its time once
+	if (!pauseSupported && counterState[channel] != RUNNING) { counterChanged(channel, RUNNING); }
 }
 
-function counterSwitched(channel, running) {
-	counterLastSeen[channel] = running ? Date.now() : 0;
-	showCounter(channel, running);
+function counterChanged(channel, state) {
+	counterState[channel] = state;
+	if (state == RUNNING) { counterLastSeen[channel] = Date.now(); }
+	renderCounter(channel);
 }
 
-function showCounter(channel, running) {
-	$(counterIds[channel]).checked = running;
-	var button = $('timer-btn-' + channel);
-	button.textContent = running ? 'Stop timer' : 'Start timer';
-	button.classList.toggle('ghost', !running);
+function timerStateReported(channel, state) {
+	pauseSupported = true;
+	counterChanged(channel, state);
 }
 
-function toggleCounter(channel) {
-	var id = counterIds[channel];
-	$(id).checked = !$(id).checked;
-	updateButton(id);
+function counterAction(channel, action) {
+	// 0 stop, 1 start from 0, 2 pause, 3 continue
+	doSend('1C' + channel + action);
+	counterChanged(channel, action == 0 ? STOPPED : action == 2 ? PAUSED : RUNNING);
+	if (action == 1) {
+		$(channel == 1 ? 'BBQcounter' : 'Foodcounter').textContent = '0:00';
+		$(channel == 1 ? 'BBQcounter-mini' : 'Foodcounter-mini').textContent = '0:00';
+	}
+}
+
+function timerButton(label, onclick, ghost) {
+	return '<button class="btn' + (ghost ? ' ghost' : '') + ' timer-btn" onclick="' + onclick + '">' + label + '</button>';
+}
+
+function renderCounter(channel) {
+	var state = counterState[channel], html;
+	if (state == RUNNING) {
+		html = (pauseSupported ? timerButton('Pause', 'counterAction(' + channel + ',2)') : '')
+			+ timerButton('Stop', 'counterAction(' + channel + ',0)', true);
+	}
+	else if (state == PAUSED) {
+		html = timerButton('Resume', 'counterAction(' + channel + ',3)')
+			+ timerButton('Stop', 'counterAction(' + channel + ',0)', true);
+	}
+	else {
+		html = timerButton('Start', 'counterAction(' + channel + ',1)', true);
+	}
+	document.querySelectorAll('.timer-actions[data-counter="' + channel + '"]').forEach(function (el) { el.innerHTML = html; });
+}
+
+function countdownStateReported(state) {
+	pauseSupported = true;
+	countdownChanged(state);
+}
+
+function countdownChanged(state) {
+	countdownState = state;
+	var busy = state != STOPPED && pauseSupported;
+	$('countdown-start').classList.toggle('hidden', busy);
+	$('countdown-actions').classList.toggle('hidden', !busy);
+	$('countdown-actions').innerHTML = state == RUNNING
+		? timerButton('Pause', 'countdownAction(0)') + timerButton('Cancel', 'countdownAction(2)', true)
+		: timerButton('Resume', 'countdownAction(1)') + timerButton('Cancel', 'countdownAction(2)', true);
+}
+
+function countdownAction(action) {
+	// 0 pause, 1 continue, 2 cancel
+	doSend('1B2' + action);
+	countdownChanged(action == 0 ? PAUSED : action == 1 ? RUNNING : STOPPED);
+	if (action == 2) { $('timer').textContent = '0:00'; }
 }
 
 function checkCounters() {
 	for (var channel = 1; channel <= 2; channel++) {
-		// started from another phone, or stopped: no time for a while
-		if (counterLastSeen[channel] && Date.now() - counterLastSeen[channel] > 3500) {
-			counterSwitched(channel, false);
+		// no running time for a while: stopped (e.g. from another phone, or older firmware)
+		if (!pauseSupported && counterState[channel] == RUNNING && Date.now() - counterLastSeen[channel] > 3500) {
+			counterChanged(channel, STOPPED);
 		}
 	}
 }
@@ -637,6 +700,7 @@ function updateTemp(code) {
 	if (input.value === '') { toast('Enter a value first'); return; }
 	doSend(code + input.value);
 	if (code == 'P') { input.value = ''; }
+	if (code == '1B1') { countdownChanged(RUNNING); }
 	toast(code == '1B1' ? 'Countdown started' : 'Saved');
 }
 

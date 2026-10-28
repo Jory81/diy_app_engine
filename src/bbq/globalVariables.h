@@ -50,6 +50,12 @@ uint16_t alarmTime1=0;
 uint16_t alarmTime2=0;
 
 boolean timer = false;
+boolean timerPaused = false;      // countdown paused, timerRemaining ms left
+unsigned long timerRemaining = 0;
+boolean paused1 = false;          // BBQ timer paused after pausedTime1 ms
+boolean paused2 = false;          // food timer paused after pausedTime2 ms
+unsigned long pausedTime1 = 0;
+unsigned long pausedTime2 = 0;
 boolean counter1 = false;
 boolean presetTimer1 = false;
 boolean presetTimer2 = false;

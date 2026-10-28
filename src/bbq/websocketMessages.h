@@ -129,6 +129,63 @@ void processWebSocketMessageS(String str, int stringLength, String dataString){
     }   
 }
 
+// Timer states for the page: "Sg" BBQ timer, "Sh" food timer, "Se" countdown;
+// 0 stopped, 1 running, 2 paused. A paused timer also sends its time once.
+void sendCounterState(uint8_t channel){
+  boolean running = channel == 1 ? counter1 : counter2;
+  boolean paused = channel == 1 ? paused1 : paused2;
+  String mergedString = String(channel == 1 ? "Sg" : "Sh") + String(running ? 1 : (paused ? 2 : 0));
+  ws.textAll(mergedString);
+  if (paused){
+    uint16_t seconds = (channel == 1 ? pausedTime1 : pausedTime2) / 1000;
+    if (channel == 1){sendCounterToClient1(seconds);} else {sendCounterToClient2(seconds);}
+  }
+}
+
+void sendCountdownState(){
+  String mergedString = "Se" + String(timer ? 1 : (timerPaused ? 2 : 0));
+  ws.textAll(mergedString);
+  if (timerPaused){
+    sendTimeToClient1(timerRemaining / 1000);
+  }
+}
+
+// BBQ (1) / food (2) timer: 0 stop, 1 start from 0, 2 pause, 3 continue after a pause
+void setCounter(uint8_t channel, int action){
+  boolean &running = channel == 1 ? counter1 : counter2;
+  boolean &paused = channel == 1 ? paused1 : paused2;
+  unsigned long &start = channel == 1 ? startCounter1 : startCounter2;
+  unsigned long &pausedTime = channel == 1 ? pausedTime1 : pausedTime2;
+  switch (action){
+    case 0: running = false; paused = false; start = millis(); break;
+    case 1: running = true;  paused = false; start = millis(); break;
+    case 2: if (running){ pausedTime = millis() - start; running = false; paused = true; } break;
+    case 3: if (paused){ start = millis() - pausedTime; running = true; paused = false; } break;
+  }
+  sendCounterState(channel);
+}
+
+// countdown: 0 pause, 1 continue, 2 cancel
+void setCountdown(int action){
+  switch (action){
+    case 0:
+      if (timer && millis() - startTime1 < targetTime1){
+        timerRemaining = targetTime1 - (millis() - startTime1);
+        timer = false;
+        timerPaused = true;
+      }
+      break;
+    case 1:
+      if (timerPaused){ targetTime1 = timerRemaining; startTime1 = millis(); timer = true; timerPaused = false; }
+      break;
+    case 2:
+      timer = false; // no "SE0": the page would beep as if the countdown finished
+      timerPaused = false;
+      break;
+  }
+  sendCountdownState();
+}
+
 void processWebSocketMessage(String str, int dataVar){
   if (firstChar == "G"){
     if (dataVar == 0){String mergedString = "GA"+String(presetTimer1); ws.textAll(mergedString);}
@@ -157,6 +214,9 @@ void processWebSocketMessage(String str, int dataVar){
     else if (dataVar == 22){ if (offsetTemperatureMin > 0) {String mergedString = "Go"+String(offsetTemperatureMin); ws.textAll(mergedString);} else {ws.textAll("G");};}  
     else if (dataVar == 23){String mergedString = "RI"+wifiID; ws.textAll(mergedString);}   // saved wifi network
     else if (dataVar == 24){String mergedString = "RP"+wifiPASS; ws.textAll(mergedString);} // saved wifi password
+    else if (dataVar == 25){sendCounterState(1);}
+    else if (dataVar == 26){sendCounterState(2);}
+    else if (dataVar == 27){sendCountdownState();}
 
 
   }
@@ -164,9 +224,10 @@ void processWebSocketMessage(String str, int dataVar){
   else if (firstChar == "1"){  
       if (str == "1A1"){targetTemperature1 = dataVar; msgFanState = true; String mergedString = "GC"+String(targetTemperature1); EEPROM.put(offsetof(storeInEEPROM, targetTemperature1), targetTemperature1);  EEPROM.commit(); ws.textAll(mergedString); } // alarmActiveT1 = true;}
       else if (str == "1A2"){targetTemperature2 = dataVar; String mergedString = "GD"+String(targetTemperature2); ws.textAll(mergedString); } // alarmActiveT2 = true;}   
-      else if (str == "1B1"){targetTime1 = dataVar*1000; timer = true; startTime1=millis();}
-      else if (str == "1C1"){counter1 = dataVar; startCounter1=millis();}
-      else if (str == "1C2"){counter2 = dataVar; startCounter2=millis();} 
+      else if (str == "1B1"){targetTime1 = dataVar*1000; timer = true; timerPaused = false; startTime1=millis(); sendCountdownState();}
+      else if (str == "1B2"){setCountdown(dataVar);}
+      else if (str == "1C1"){setCounter(1, dataVar);}
+      else if (str == "1C2"){setCounter(2, dataVar);} 
       else if (str == "1D1"){presetTimer1 = dataVar; timerCheck1 = true; String mergedString = "GA"+String(presetTimer1); ws.textAll(mergedString);}  
       else if (str == "1D2"){presetTimer2 = dataVar; timerCheck2 = true; String mergedString = "Ga"+String(presetTimer2); ws.textAll(mergedString);}     
       else if (str == "1E1"){timerCheck1 = false; String mergedString = "GI"+String(timerCheck1); ws.textAll(mergedString);}

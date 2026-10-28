@@ -11,3 +11,5 @@
 .timer-row .label { font-size: 0.9rem; color: var(--text-dim); }
 .timer-mini { color: var(--text); font-size: 1.15rem; font-variant-numeric: tabular-nums; margin-left: 4px; }
 .timer-btn { padding: 8px 12px; font-size: 0.85rem; }
+.timer-actions { display: flex; gap: 6px; flex: none; }
+#countdown-actions { justify-content: flex-end; }
