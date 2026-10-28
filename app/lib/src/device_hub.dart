@@ -51,6 +51,9 @@ class DeviceHub extends ChangeNotifier {
   final Map<String, bool> _online = {};
   final Set<String> _switching = {};
   bool _scanning = false;
+
+  /// Why the last [locate] failed, for the error screen.
+  String? lastLocateProblem;
   Future<Set<String>>? _currentScan;
   WifiDetails? _wifi;
 
@@ -136,19 +139,28 @@ class DeviceHub extends ChangeNotifier {
   Future<Device?> locate(Device device) async {
     // The saved list may already know a newer address (from a scan).
     final current = _byKey(device.key) ?? device;
-    final info = await infoClient.fetch(
+    final result = await infoClient.probe(
       current.host,
-      timeout: const Duration(seconds: 3),
+      timeout: const Duration(seconds: 4),
     );
+    final info = result.info;
     if (info != null && (current.id == null || info.id == current.id)) {
+      lastLocateProblem = null;
       _applyFound(Discovered(info, current.host));
       await _save();
       return _byKey(info.id);
     }
+    lastLocateProblem = info != null
+        ? '${current.host} is now another device (id ${info.id})'
+        : result.problem;
     final id = current.id;
     if (id == null) return null;
     final foundIds = await scan();
-    return foundIds.contains(id) ? _byKey(id) : null;
+    if (foundIds.contains(id)) return _byKey(id);
+    lastLocateProblem =
+        '${lastLocateProblem ?? 'No answer'}; a scan of the network did not '
+        'find it either';
+    return null;
   }
 
   /// Switches a multi-mode device to [mode] (`POST /mode`), then waits for

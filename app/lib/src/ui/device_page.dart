@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -33,6 +35,11 @@ class _DevicePageState extends State<DevicePage> {
   WebViewController? _controller;
   int _progress = 0;
 
+  /// Shown after a few seconds of "Connecting…": open the saved address
+  /// without checking it first (like typing it in a browser).
+  bool _offerOpenAnyway = false;
+  Timer? _openAnywayTimer;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +49,7 @@ class _DevicePageState extends State<DevicePage> {
 
   @override
   void dispose() {
+    _openAnywayTimer?.cancel();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -50,9 +58,25 @@ class _DevicePageState extends State<DevicePage> {
     setState(() {
       _phase = _Phase.locating;
       _error = null;
+      _offerOpenAnyway = false;
     });
-    final found = await widget.hub.locate(_device);
-    if (!mounted) return;
+    _openAnywayTimer?.cancel();
+    _openAnywayTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _offerOpenAnyway = true);
+    });
+    Device? found;
+    try {
+      // a scan is limited to 30 s; this is the last line of defence
+      found = await widget.hub
+          .locate(_device)
+          .timeout(const Duration(seconds: 45));
+    } on TimeoutException {
+      widget.hub.lastLocateProblem = 'Searching took too long';
+    } on Object catch (e) {
+      widget.hub.lastLocateProblem = 'Unexpected error: $e';
+    }
+    _openAnywayTimer?.cancel();
+    if (!mounted || _phase == _Phase.ready) return; // opened anyway meanwhile
     if (found == null) {
       // keep the newest saved copy, so "Try again" starts from its address
       _device = widget.hub.devices.firstWhere(
@@ -63,11 +87,17 @@ class _DevicePageState extends State<DevicePage> {
         _phase = _Phase.failed;
         _error =
             '"${_device.displayName}" did not answer at '
-            '${_device.host} and was not found on this network.';
+            '${_device.host} and was not found on this network.'
+            '${widget.hub.lastLocateProblem == null ? '' : '\n\nDetails: ${widget.hub.lastLocateProblem}'}';
       });
       return;
     }
     _device = found;
+    await _load();
+  }
+
+  /// Shows the device page in the WebView.
+  Future<void> _load() async {
     if (kIsWeb) {
       setState(() {
         _phase = _Phase.failed;
@@ -75,11 +105,25 @@ class _DevicePageState extends State<DevicePage> {
       });
       return;
     }
-    final controller = _controller ??= _createController();
-    // show the WebView (with its progress bar) right away instead of waiting
-    // for the page in the "Connecting…" screen
-    setState(() => _phase = _Phase.ready);
-    await controller.loadRequest(_device.uiUri);
+    try {
+      final controller = _controller ??= _createController();
+      // show the WebView (with its progress bar) right away instead of
+      // waiting for the page in the "Connecting…" screen
+      setState(() => _phase = _Phase.ready);
+      await controller.loadRequest(_device.uiUri);
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.failed;
+        _error = 'Could not open the device page: $e';
+      });
+    }
+  }
+
+  /// Skips the check and opens the saved address directly.
+  Future<void> _openAnyway() async {
+    _openAnywayTimer?.cancel();
+    await _load();
   }
 
   WebViewController _createController() {
@@ -183,6 +227,14 @@ class _DevicePageState extends State<DevicePage> {
           text:
               'If it moved to another address, the app searches '
               'the network for it.',
+          actions: [
+            if (_offerOpenAnyway)
+              OutlinedButton.icon(
+                onPressed: _openAnyway,
+                icon: const Icon(Icons.open_in_new),
+                label: Text('Open ${_device.host} anyway'),
+              ),
+          ],
         ),
         _Phase.restarting => _Message(
           icon: const CircularProgressIndicator(),
@@ -206,6 +258,11 @@ class _DevicePageState extends State<DevicePage> {
               onPressed: _locateAndLoad,
               icon: const Icon(Icons.refresh),
               label: const Text('Try again'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _openAnyway,
+              icon: const Icon(Icons.open_in_new),
+              label: Text('Open ${_device.host} anyway'),
             ),
             OutlinedButton.icon(
               onPressed: _openInBrowser,

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../device_hub.dart';
 import '../models/device.dart';
+import '../version.dart';
 import 'device_card.dart';
 import 'device_page.dart';
 import 'device_type_style.dart';
@@ -141,7 +142,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final devices = hub.devices;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('ESP Device Hub'),
+            // version in the title, so it is easy to tell which build is installed
+            title: Text.rich(
+              TextSpan(
+                text: 'ESP Device Hub ',
+                children: [
+                  TextSpan(
+                    text: appVersion,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             actions: [
               IconButton(
                 tooltip: 'Scan',
