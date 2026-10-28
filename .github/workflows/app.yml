@@ -50,6 +50,19 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      # R8 once removed code that shared_preferences calls over JNI (the app could not
+      # save its device list). Fail the build if that code is missing from the APK.
+      - name: Check the APK still contains the shared_preferences JNI methods
+        run: |
+          dexdump=$(ls -d "$ANDROID_HOME"/build-tools/*/dexdump | sort -V | tail -1)
+          mkdir -p /tmp/apk && unzip -o -q build/app/outputs/flutter-apk/app-release.apk 'classes*.dex' -d /tmp/apk
+          for dex in /tmp/apk/classes*.dex; do "$dexdump" "$dex"; done > /tmp/apk/dump.txt
+          awk '/Class descriptor/ {cls=$0} /name +: / && cls ~ /sharedpreferences\/SharedPreferencesApiRegistrar;/ {print $3}' /tmp/apk/dump.txt | sort -u > /tmp/apk/methods.txt
+          cat /tmp/apk/methods.txt
+          for m in getAll setString remove; do
+            grep -qx "'$m'" /tmp/apk/methods.txt || { echo "::error::SharedPreferencesApiRegistrar.$m missing from the release APK (R8 keep rules)"; exit 1; }
+          done
+
       - name: Name APK
         id: apk
         run: |
