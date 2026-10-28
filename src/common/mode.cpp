@@ -45,7 +45,7 @@ void registerModeRoutes(AsyncWebServer &server){
   });
   server.on("/mode", HTTP_POST, [](AsyncWebServerRequest *request){
     // set=<mode> as form field or query parameter
-    AsyncWebParameter *param = request->getParam("set", true);
+    const AsyncWebParameter *param = request->getParam("set", true);
     if (param == nullptr){
       param = request->getParam("set");
     }

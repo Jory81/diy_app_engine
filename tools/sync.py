@@ -12,7 +12,6 @@ made to the original code:
     settings are kept separately and survive switching modes
   * the web page is served from /<mode>/ in SPIFFS, shared files from /common/
   * the /mode routes (switch modes) are added to the web server, /info lists the modes
-  * the BBQ mode also gets the over-the-air updater (/update) the greenhouse already has
 
 The web pages (data/) are copied too, with mode.js added for the mode switch.
 Run it again after changing one of the original projects; never edit src/bbq or src/greenhouse
@@ -62,14 +61,11 @@ def split_prelude(lines):
     sys.exit('sync.py: no code found in main .cpp')
 
 
-def wrap_main(text, namespace, store, source, add_ota):
+def wrap_main(text, namespace, store, source):
     lines = text.splitlines(keepends=True)
     start = split_prelude(lines)
     prelude = ''.join(lines[:start])
     body = ''.join(lines[start:])
-    if add_ota and 'AsyncElegantOTA.h' not in prelude:
-        prelude = replace_once(prelude, '#include <ESPAsyncWebServer.h>\n',
-                               '#include <ESPAsyncWebServer.h>\n#include <AsyncElegantOTA.h>\n', source)
     return (HEADER.format(source=source) + prelude
             + '#include "../common/mode.h"\n\n'
             + f'namespace {namespace} {{\n\n'
@@ -78,7 +74,7 @@ def wrap_main(text, namespace, store, source, add_ota):
             + f'\n}} // namespace {namespace}\n')
 
 
-def patch_web_server(text, data_dir, source, add_ota):
+def patch_web_server(text, data_dir, source):
     text = replace_once(text, 'request->send(SPIFFS, "/index.html", "text/html");',
                         f'request->send(SPIFFS, "/{data_dir}/index.html", "text/html");', source)
     static = ('server.serveStatic("/", SPIFFS, "/");' if 'server.serveStatic("/", SPIFFS, "/");' in text
@@ -86,8 +82,6 @@ def patch_web_server(text, data_dir, source, add_ota):
     if static is None:
         sys.exit(f'sync.py: serveStatic not found in {source}')
     extra = f'server.serveStatic("/", SPIFFS, "/{data_dir}/");\n    server.serveStatic("/", SPIFFS, "/common/");\n    registerModeRoutes(server);'
-    if add_ota:
-        extra += '\n    AsyncElegantOTA.begin(&server);'
     return replace_once(text, static, extra, source)
 
 
@@ -103,7 +97,6 @@ def sync_mode(project, namespace, data_dir, store, main_cpp):
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    add_ota = namespace == 'bbq'
 
     for path in sorted(src.iterdir()):
         if path.suffix not in ('.h', '.cpp'):
@@ -111,11 +104,11 @@ def sync_mode(project, namespace, data_dir, store, main_cpp):
         source = f'{project.name}/src/{path.name}'
         text = path.read_text()
         if path.name == main_cpp:
-            text = wrap_main(text, namespace, store, source, add_ota)
+            text = wrap_main(text, namespace, store, source)
             (out / f'{namespace}.cpp').write_text(text)
             continue
         if path.name == 'websocketMessages.h':
-            text = patch_web_server(text, data_dir, source, add_ota)
+            text = patch_web_server(text, data_dir, source)
         if path.name == 'deviceInfo.h':
             text = patch_device_info(text, source)
         (out / path.name).write_text(HEADER.format(source=source) + text)

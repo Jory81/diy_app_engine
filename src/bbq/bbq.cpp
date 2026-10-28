@@ -36,7 +36,7 @@ HALLO LEON
 #include <EEPROM.h>
 
 #include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
+#include <ElegantOTA.h> // firmware/filesystem update page at /update (needs -DELEGANTOTA_USE_ASYNC_WEBSERVER=1)
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 
@@ -207,6 +207,7 @@ void loop()
      if (!wifiStationMode){
         dnsServer.processNextRequest();
      }
+     ElegantOTA.loop(); // restarts after a finished update
 
      if (millis() - previousMillis1 >= updateTimeTemp){
         ws.cleanupClients(); // free sockets of phones that dropped off without closing (prevents running out of memory)

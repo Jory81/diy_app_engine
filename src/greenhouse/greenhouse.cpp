@@ -23,7 +23,7 @@
 #include <ArduinoJson.h>
 
 #include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
+#include <ElegantOTA.h> // successor of the archived AsyncElegantOTA (needs -DELEGANTOTA_USE_ASYNC_WEBSERVER=1)
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 
@@ -258,6 +258,7 @@ void loop(){
     if (!wifiStationMode){
       dnsServer.processNextRequest();
     }
+    ElegantOTA.loop(); // restarts after a finished update
 
     if (rtcSyncRequested){ // requested by the web page; done here so the websocket task is never blocked
       rtcSyncRequested = false;

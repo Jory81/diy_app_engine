@@ -38,12 +38,15 @@ USB cable): *Connect*, keep Flash Address `0x1000`, choose `diy-app-engine-full-
 and press *Program*. If no COM port shows up, install the CP210x or CH340 USB driver; if
 connecting fails, hold the BOOT button while clicking *Connect*.
 
-## Over wifi from the greenhouse firmware (no cable)
+## Over wifi (no cable)
 
-The partition table is the same as the single-mode firmwares, so a greenhouse controller can be
-moved to this firmware over wifi: open `http://<controller-ip>/update`, upload `firmware.bin` as
-*Firmware*, and right after the restart upload `spiffs.bin` as *Filesystem* (until then the page
-is missing, `/update` keeps working). The saved settings are kept and the controller starts in
-greenhouse mode. The single-mode BBQ firmware has no updater, so a BBQ controller needs the USB
-cable once (use the *Update* command above to keep its settings); after that `/update` works in
-both modes.
+Open `http://<controller-ip>/update` (or `http://192.168.4.1/update` on the ESP32-AP network).
+Upload `firmware.bin` with *OTA Mode: Firmware*, wait for the restart, then upload `spiffs.bin`
+with *OTA Mode: Filesystem*; until then the page itself is missing, `/update` keeps working.
+The saved settings are kept. Never upload a *full-flash* file there.
+
+This also moves a controller from the single-mode BBQ or greenhouse firmware to this one: the
+partition table is the same, the settings are kept and it starts in the mode it was running.
+Older firmware shows an older update page (two round buttons *Firmware* / *Filesystem*); it
+works the same. The BBQ firmware before version 2.1 has no update page: flash it once by cable
+(see *Update* above).

@@ -23,7 +23,7 @@ void initWebServer() {
     server.serveStatic("/", SPIFFS, "/gh/");
     server.serveStatic("/", SPIFFS, "/common/");
     registerModeRoutes(server); // serves file.gz automatically when present
-    AsyncElegantOTA.begin(&server);   // Start ElegantOTA
+    ElegantOTA.begin(&server);   // update page at /update
     server.onNotFound(onNotFound);
     server.begin();
 }

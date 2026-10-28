@@ -17,8 +17,8 @@ void initWebServer() {
     server.on("/info", HTTP_GET, onInfoRequest);
     server.serveStatic("/", SPIFFS, "/bbq/");
     server.serveStatic("/", SPIFFS, "/common/");
-    registerModeRoutes(server);
-    AsyncElegantOTA.begin(&server); // serves file.gz automatically when present
+    registerModeRoutes(server); // serves file.gz automatically when present
+    ElegantOTA.begin(&server); // update page at /update
     server.onNotFound(onNotFound);
     server.begin();
 }

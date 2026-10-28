@@ -6,7 +6,7 @@
 
 #define DEVICE_TYPE "bbq"
 #define DEVICE_NAME "BBQ controller"
-#define FIRMWARE_VERSION "2.0"
+#define FIRMWARE_VERSION "2.1"
 
 String deviceId(){
   uint8_t mac[6];
