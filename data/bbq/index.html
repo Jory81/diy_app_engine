@@ -23,6 +23,8 @@
   <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
   <symbol id="i-probes" viewBox="0 0 24 24"><path d="M6 3v12M12 3v12M18 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="12" cy="18" r="3"/><circle cx="18" cy="18" r="3"/></symbol>
@@ -62,6 +64,10 @@
         <span>Hot +<b id="offsetFromTargetTempMax">--</b>°</span>
         <span>Alarm after <b id="alarm1">--</b></span>
       </div>
+      <div class="row timer-row">
+        <div class="label">Timer <b class="timer-mini" id="BBQcounter-mini">0:00</b></div>
+        <button class="btn ghost timer-btn" id="timer-btn-1" onclick="toggleCounter(1)">Start timer</button>
+      </div>
       <div class="chips">
         <label class="chip" title="Alarm when the target temperature is reached"><input type="checkbox" id="1J1" onclick="updateButton('1J1')"><svg class="i sm"><use href="#i-bell"/></svg>At target</label>
         <label class="chip" title="Start the BBQ timer when the target temperature is reached"><input type="checkbox" id="1D1" onclick="updateButton('1D1')"><svg class="i sm"><use href="#i-timer"/></svg>Timer at target</label>
@@ -80,6 +86,10 @@
       <div class="meta">
         <span>Target <b><span id="targetTemperature2">--</span>°</b></span>
         <span>Alarm after <b id="alarm2">--</b></span>
+      </div>
+      <div class="row timer-row">
+        <div class="label">Timer <b class="timer-mini" id="Foodcounter-mini">0:00</b></div>
+        <button class="btn ghost timer-btn" id="timer-btn-2" onclick="toggleCounter(2)">Start timer</button>
       </div>
       <div class="chips">
         <label class="chip" title="Alarm when the target temperature is reached"><input type="checkbox" id="1J2" onclick="updateButton('1J2')"><svg class="i sm"><use href="#i-bell"/></svg>At target</label>
@@ -217,22 +227,22 @@
   <div class="panel" id="panel-cal">
     <div class="form-grid">
       <p class="hint">Calibration offset per probe; it is subtracted from the measured temperature.</p>
-      <label>Probe 1 (now <span id="cal_val1">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv1"><button class="btn" onclick="updateText('cv1')">Save</button></div></label>
-      <label>Probe 2 (now <span id="cal_val2">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv2"><button class="btn" onclick="updateText('cv2')">Save</button></div></label>
-      <label>Probe 3 (now <span id="cal_val3">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv3"><button class="btn" onclick="updateText('cv3')">Save</button></div></label>
-      <label>Probe 4 (now <span id="cal_val4">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv4"><button class="btn" onclick="updateText('cv4')">Save</button></div></label>
-      <label>Probe 5 (now <span id="cal_val5">-</span> °C)<div class="field"><input type="number" step="0.1" id="cv5"><button class="btn" onclick="updateText('cv5')">Save</button></div></label>
+      <label><span>Probe 1 (now <span id="cal_val1">-</span> °C)</span><div class="field"><input type="number" step="0.1" id="cv1"><button class="btn" onclick="updateText('cv1')">Save</button></div></label>
+      <label><span>Probe 2 (now <span id="cal_val2">-</span> °C)</span><div class="field"><input type="number" step="0.1" id="cv2"><button class="btn" onclick="updateText('cv2')">Save</button></div></label>
+      <label><span>Probe 3 (now <span id="cal_val3">-</span> °C)</span><div class="field"><input type="number" step="0.1" id="cv3"><button class="btn" onclick="updateText('cv3')">Save</button></div></label>
+      <label><span>Probe 4 (now <span id="cal_val4">-</span> °C)</span><div class="field"><input type="number" step="0.1" id="cv4"><button class="btn" onclick="updateText('cv4')">Save</button></div></label>
+      <label><span>Probe 5 (now <span id="cal_val5">-</span> °C)</span><div class="field"><input type="number" step="0.1" id="cv5"><button class="btn" onclick="updateText('cv5')">Save</button></div></label>
       <p class="hint">Fan output range used in automatic mode (PWM 0–255).</p>
-      <label>Fan output min (now <span id="pid_val1">-</span>)<div class="field"><input type="number" id="pv1"><button class="btn" onclick="updateText('pv1')">Save</button></div></label>
-      <label>Fan output max (now <span id="pid_val2">-</span>)<div class="field"><input type="number" id="pv2"><button class="btn" onclick="updateText('pv2')">Save</button></div></label>
+      <label><span>Fan output min (now <span id="pid_val1">-</span>)</span><div class="field"><input type="number" id="pv1"><button class="btn" onclick="updateText('pv1')">Save</button></div></label>
+      <label><span>Fan output max (now <span id="pid_val2">-</span>)</span><div class="field"><input type="number" id="pv2"><button class="btn" onclick="updateText('pv2')">Save</button></div></label>
     </div>
   </div>
 
   <div class="panel" id="panel-wifi">
     <div class="form-grid">
       <p class="hint">Home network to join at start-up. Without it the controller starts its own network "ESP32-AP" at 192.168.4.1.</p>
-      <label>Network name (saved: <span id="SSID">-</span>)<div class="field"><input type="text" id="ssid" autocomplete="off" maxlength="31"><button class="btn" onclick="updateTemp('I')">Save</button></div></label>
-      <label>Password (saved: <span id="PASS">-</span>)<div class="field"><input type="password" id="pass" autocomplete="off" maxlength="31"><button class="btn" onclick="updateTemp('P')">Save</button></div></label>
+      <label><span>Network name (saved: <span id="SSID">-</span>)</span><div class="field"><input type="text" id="ssid" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="31"><button class="btn" onclick="updateTemp('I')">Save</button></div></label>
+      <label><span>Password (saved: <span id="PASS">-</span>)</span><div class="field"><div class="pw"><input type="password" id="pass" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="31"><button type="button" class="eye" id="pass-eye" onclick="togglePassword()" title="Show password" aria-label="Show password" aria-pressed="false"><svg class="i"><use href="#i-eye"/></svg></button></div><button class="btn" onclick="updateTemp('P')">Save</button></div></label>
       <p class="hint">Restart the controller to connect with the new settings.</p>
     </div>
   </div>
@@ -282,6 +292,7 @@ window.addEventListener('load', onLoad);
 function onLoad() {
 	initWebSocket();
 	setInterval(checkConnection, 2000);
+	setInterval(checkCounters, 1000);
 	document.addEventListener('visibilitychange', function () {
 		// reconnect straight away when the phone is unlocked / the tab is shown again
 		if (!document.hidden && (Date.now() - lastMessageTime > connectionTimeout || websocket.readyState != WebSocket.OPEN)) {
@@ -370,6 +381,12 @@ function onMessage(event) {
 			syncIndex++;
 			doSend('GGG' + syncIndex);
 		}
+		else if (syncIndex == lastSyncIndex) {
+			// saved wifi network and password (answered with "RI"/"RP", firmware 2.0 and newer)
+			syncIndex++;
+			doSend('GGG23');
+			doSend('GGG24');
+		}
 	}
 	else if (type == 'T') {
 		handleTemperatures(string.slice(1).split('+'));
@@ -378,7 +395,7 @@ function onMessage(event) {
 		handleStatus(key, residu);
 	}
 	else if (type == 'R') {
-		if (key == 'P') { $('PASS').textContent = residu ? '•'.repeat(residu.length) : '-'; }
+		if (key == 'P') { savedPassword = residu; showSavedPassword(); }
 		else if (key == 'I') { $('SSID').textContent = residu || '-'; }
 	}
 }
@@ -488,7 +505,9 @@ function handleStatus(key, residu) {
 			break;
 		case 'G':
 			$('BBQcounter').textContent = formatDuration(seconds);
+			$('BBQcounter-mini').textContent = formatDuration(seconds);
 			$('BBQcounter-s').textContent = seconds + ' s';
+			counterSeen(1);
 			if (alarmTime1 > 1 && $('1G1').checked && seconds >= alarmTime1) {
 				$('1G1').checked = false;
 				doSend('1G1' + 0);
@@ -498,7 +517,9 @@ function handleStatus(key, residu) {
 			break;
 		case 'H':
 			$('Foodcounter').textContent = formatDuration(seconds);
+			$('Foodcounter-mini').textContent = formatDuration(seconds);
 			$('Foodcounter-s').textContent = seconds + ' s';
+			counterSeen(2);
 			if (alarmTime2 > 1 && $('1G2').checked && seconds >= alarmTime2) {
 				$('1G2').checked = false;
 				doSend('1G2' + 0);
@@ -538,6 +559,49 @@ function updateButton(id) {
 		doSend(id + 0);
 	}
 	if (id == '1T1') { $('fan-mode').textContent = checked ? 'manual' : 'auto'; }
+	if (id == '1C1' || id == '1G1') { counterSwitched(1, $('1C1').checked || id == '1G1' && checked); }
+	if (id == '1C2' || id == '1G2') { counterSwitched(2, $('1C2').checked || id == '1G2' && checked); }
+}
+
+// ----------------------------------------------------------------------------
+// BBQ / food timers. The controller does not report whether a timer runs, but
+// it sends the running time ("SG"/"SH") every second only while it runs; use
+// that, so the switches are right after reloading the page as well.
+// ----------------------------------------------------------------------------
+
+var counterLastSeen = {1: 0, 2: 0};
+var counterIds = {1: '1C1', 2: '1C2'};
+
+function counterSeen(channel) {
+	counterLastSeen[channel] = Date.now();
+	showCounter(channel, true);
+}
+
+function counterSwitched(channel, running) {
+	counterLastSeen[channel] = running ? Date.now() : 0;
+	showCounter(channel, running);
+}
+
+function showCounter(channel, running) {
+	$(counterIds[channel]).checked = running;
+	var button = $('timer-btn-' + channel);
+	button.textContent = running ? 'Stop timer' : 'Start timer';
+	button.classList.toggle('ghost', !running);
+}
+
+function toggleCounter(channel) {
+	var id = counterIds[channel];
+	$(id).checked = !$(id).checked;
+	updateButton(id);
+}
+
+function checkCounters() {
+	for (var channel = 1; channel <= 2; channel++) {
+		// started from another phone, or stopped: no time for a while
+		if (counterLastSeen[channel] && Date.now() - counterLastSeen[channel] > 3500) {
+			counterSwitched(channel, false);
+		}
+	}
 }
 
 function updateText(id) {
@@ -547,9 +611,29 @@ function updateText(id) {
 	toast('Saved');
 }
 
+var savedPassword = '';
+var passwordVisible = false;
+
+function showSavedPassword() {
+	$('PASS').textContent = savedPassword ? (passwordVisible ? savedPassword : '•'.repeat(savedPassword.length)) : '-';
+}
+
+// eye button: show or hide the password, both while typing and the saved one
+function togglePassword() {
+	passwordVisible = !passwordVisible;
+	var eye = $('pass-eye');
+	$('pass').type = passwordVisible ? 'text' : 'password';
+	eye.setAttribute('aria-pressed', passwordVisible);
+	eye.title = passwordVisible ? 'Hide password' : 'Show password';
+	eye.setAttribute('aria-label', eye.title);
+	eye.querySelector('use').setAttribute('href', passwordVisible ? '#i-eye-off' : '#i-eye');
+	showSavedPassword();
+}
+
 function updateTemp(code) {
 	var map = {'1A1': 'A1', '1A2': 'A2', '1F1': 'F1', '1F2': 'F2', '1K1': 'K1', '1K2': 'K2', '1B1': 'B1', 'I': 'ssid', 'P': 'pass'};
 	var input = $(map[code]);
+	if (code == 'I') { input.value = input.value.trim(); } // keyboards like to add a space after a word
 	if (input.value === '') { toast('Enter a value first'); return; }
 	doSend(code + input.value);
 	if (code == 'P') { input.value = ''; }

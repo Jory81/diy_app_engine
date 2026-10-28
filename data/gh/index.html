@@ -27,6 +27,8 @@
   <symbol id="i-fan" viewBox="0 0 24 24"><path d="M10.83 16.38a6.08 6.08 0 0 1-8.62-7l5.41 1.45a6.08 6.08 0 0 1 7-8.62l-1.45 5.41a6.08 6.08 0 0 1 8.62 7l-5.41-1.45a6.08 6.08 0 0 1-7 8.62l1.45-5.41Z"/><path d="M12 12v.01"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></symbol>
   <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
@@ -341,8 +343,10 @@ function buildPanels() {
 		hHead('Wi-Fi', 'wifi') +
 		'<div class="frow txt"><div class="label">Network name (SSID)<small>saved: <span data-show="wifiID" data-fmt="raw">—</span></small></div>' +
 		'<input type="text" id="ssid" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="SSID" aria-label="Wi-Fi SSID"><button class="btn" type="button" data-save="ssid">Set</button></div>' +
-		'<div class="frow txt"><div class="label">Password<small>saved: <span data-show="wifiPASS" data-fmt="raw">—</span></small></div>' +
-		'<input type="text" id="pass" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Password" aria-label="Wi-Fi password"><button class="btn" type="button" data-save="pass">Set</button></div>' +
+		'<div class="frow txt"><div class="label">Password<small>saved: <span data-show="wifiPASS" data-fmt="secret">—</span></small></div>' +
+		'<div class="pw"><input type="password" id="pass" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Password" aria-label="Wi-Fi password">' +
+		'<button type="button" class="eye" id="pass-eye" data-eye title="Show password" aria-label="Show password" aria-pressed="false">' + icon('eye') + '</button></div>' +
+		'<button class="btn" type="button" data-save="pass">Set</button></div>' +
 		hHead('Maintenance', 'cpu') +
 		'<div class="actions"><a class="btn ghost" href="/update">' + icon('upload') + 'Firmware update</a>' +
 		'<button class="btn danger" type="button" id="Reboot">' + icon('power') + 'Reboot</button></div>';
@@ -525,6 +529,7 @@ document.addEventListener('input', function (e) {
 function saveField(key) {
 	var input = document.getElementById(key);
 	if (!input) { return; }
+	if (key === 'ssid') { input.value = input.value.trim(); } // keyboards like to add a space after a word
 	var value = input.value;
 	if (value.trim() === '') { toast('Enter a value first'); input.focus(); return; }
 	if (input.type === 'number' && !isFinite(parseFloat(value))) { toast('Not a number'); input.focus(); return; }
@@ -537,7 +542,8 @@ function saveField(key) {
 document.addEventListener('click', function (e) {
 	var t = e.target.closest ? e.target.closest('button, [data-open]') : null;
 	if (!t) { return; }
-	if (t.dataset.save) { saveField(t.dataset.save); }
+	if (t.hasAttribute('data-eye')) { togglePassword(t); }
+	else if (t.dataset.save) { saveField(t.dataset.save); }
 	else if (t.dataset.lights) { saveLights(t.dataset.lights); }
 	else if (t.dataset.open) { openSheet(t.dataset.open); }
 	else if (t.dataset.tab) { showTab(t.dataset.tab); }
@@ -624,10 +630,24 @@ function soilTarget(i) {
 	return {t: num(S[(day ? 'day' : 'night') + 'SoilTemp' + i]), day: day, range: num(S['tempRange' + i]), alarm: num(S['alarmRange' + i])};
 }
 
+var passwordVisible = false;
+
+// eye button: show or hide the password, both while typing and the saved one
+function togglePassword(eye) {
+	passwordVisible = !passwordVisible;
+	$('#pass').type = passwordVisible ? 'text' : 'password';
+	eye.setAttribute('aria-pressed', passwordVisible);
+	eye.title = passwordVisible ? 'Hide password' : 'Show password';
+	eye.setAttribute('aria-label', eye.title);
+	$('use', eye).setAttribute('href', passwordVisible ? '#i-eye-off' : '#i-eye');
+	render();
+}
+
 function render() {
 	$$('[data-show]').forEach(function (el) {
 		var k = el.dataset.show, v = S[k], txt;
 		if (v === undefined || v === null || v === '') { txt = /lights\dO/.test(k) ? '--:--' : '—'; }
+		else if (el.dataset.fmt === 'secret') { txt = passwordVisible ? String(v) : '•'.repeat(String(v).length); }
 		else if (el.dataset.fmt === 'raw' || typeof v === 'string' && /^\d\d:\d\d/.test(v)) { txt = String(v); }
 		else if (/^fanspeed/.test(k)) { txt = fmt(v, 0); }
 		else { txt = fmt(v, 1); }

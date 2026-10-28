@@ -92,8 +92,9 @@ def patch_web_server(text, data_dir, source, add_ota):
 
 
 def patch_device_info(text, source):
-    return replace_once(text, '+ "\\",\\"ip\\":\\"" + ip + "\\"}";',
-                        '+ "\\",\\"ip\\":\\"" + ip + "\\",\\"modes\\":" + modeListJson() + "}";', source)
+    # the /info JSON ends with  + "}";  on its own line
+    return replace_once(text, '              + "}";',
+                        '              + ",\\"modes\\":" + modeListJson() + "}";', source)
 
 
 def sync_mode(project, namespace, data_dir, store, main_cpp):

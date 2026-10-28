@@ -109,6 +109,7 @@ void processWebSocketMessageS(String str, int stringLength, String dataString){
           arrayPos++;
         }
         EEPROM.commit();
+        wifiID = dataString; // used at the next start
         String mergedString = "RI"+String(dataString); 
         //Serial.print("SSID "); Serial.println(mergedString);
         ws.textAll(mergedString);   
@@ -121,6 +122,7 @@ void processWebSocketMessageS(String str, int stringLength, String dataString){
           arrayPos++;
         } 
       EEPROM.commit();
+      wifiPASS = dataString; // used at the next start
       String mergedString = "RP"+String(dataString); 
       //Serial.print("PASS "); Serial.println(mergedString);
       ws.textAll(mergedString);
@@ -153,6 +155,8 @@ void processWebSocketMessage(String str, int dataVar){
     else if (dataVar == 20){String mergedString = "Gi"+String(timerCheck2); ws.textAll(mergedString);}
     else if (dataVar == 21){String mergedString = "Gr"+String(tempOffsetAlarmMin); ws.textAll(mergedString);}
     else if (dataVar == 22){ if (offsetTemperatureMin > 0) {String mergedString = "Go"+String(offsetTemperatureMin); ws.textAll(mergedString);} else {ws.textAll("G");};}  
+    else if (dataVar == 23){String mergedString = "RI"+wifiID; ws.textAll(mergedString);}   // saved wifi network
+    else if (dataVar == 24){String mergedString = "RP"+wifiPASS; ws.textAll(mergedString);} // saved wifi password
 
 
   }

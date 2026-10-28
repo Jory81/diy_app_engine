@@ -94,6 +94,8 @@ void setupRTC(){
 
 void setupWIFI(){
   int wifiCounter=0;
+  // 20 s for the router to answer; without a saved network start the soft-AP straight away
+  const int maxTries = wifiID.length() > 0 ? 40 : 0;
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false); // modem sleep causes websocket lag and dropped connections
   const char *WIFI_SSID = &wifiID[0];
@@ -110,12 +112,31 @@ void setupWIFI(){
       wifiCounter++;
       wifiStationMode = true;
 
-      if (wifiCounter > 20){
+      if (wifiCounter > maxTries){
       wifiStationMode = false;  
       break;  
       }
   }
-  if (wifiCounter >20){
+  if (wifiCounter > maxTries){
+  // tell why, so a typo in the network name or password is easy to spot
+  wl_status_t reason = WiFi.status();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  if (wifiID.length() == 0){
+    display.println(F("no wifi saved"));
+  }
+  else if (reason == WL_NO_SSID_AVAIL){
+    display.println(F("wifi not found:"));
+    display.println(wifiID);
+  }
+  else {
+    display.println(F("wifi not connected:"));
+    display.println(wifiID);
+    display.println(F("check the password"));
+  }
+  display.display();
+  Serial.printf("\nwifi '%s' not connected (status %d), starting soft-AP\n", wifiID.c_str(), reason);
+  delay(2000);
   WiFi.mode(WIFI_OFF);
   delay(1000);
   WiFi.mode(WIFI_AP);

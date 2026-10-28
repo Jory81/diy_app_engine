@@ -131,8 +131,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         if (json.containsKey("requestInfo")){sendProgramInfo();}
         else if (json.containsKey("hours")){hourStart = json["hours"]; minutesStart = json["minutes"]; rtcSyncRequested = true; } //
         else if (json.containsKey("saveInEEPROM")){saveInEEPROM = json["saveInEEPROM"];}   
-        else if (json.containsKey("ssid")){String wifiID = json["ssid"]; EEPROMposition = offsetof(storeEEPROM, systemParam.SSID[0]); writeStringToEEPROM(EEPROMposition, wifiID, sizeof(systemParam.SSID)); notifyClientsSingleString("wifiID", wifiID);}
-        else if (json.containsKey("pass")){String wifiPASS = json["pass"]; EEPROMposition = offsetof(storeEEPROM, systemParam.PASS[0]); writeStringToEEPROM(EEPROMposition, wifiPASS, sizeof(systemParam.PASS)); notifyClientsSingleString("wifiPASS", wifiPASS);}
+        else if (json.containsKey("ssid")){wifiID = json["ssid"].as<String>(); EEPROMposition = offsetof(storeEEPROM, systemParam.SSID[0]); writeStringToEEPROM(EEPROMposition, wifiID, sizeof(systemParam.SSID)); notifyClientsSingleString("wifiID", wifiID);}
+        else if (json.containsKey("pass")){wifiPASS = json["pass"].as<String>(); EEPROMposition = offsetof(storeEEPROM, systemParam.PASS[0]); writeStringToEEPROM(EEPROMposition, wifiPASS, sizeof(systemParam.PASS)); notifyClientsSingleString("wifiPASS", wifiPASS);}
         
         // THESE SYSTEM VALUES ARE ALWAYS SAVED TO EEPROM
         else if (json.containsKey("probeTypeT")){systemParam.probeTypeT = json["probeTypeT"]; EEPROM.put(offsetof(storeEEPROM, systemParam.probeTypeT), systemParam.probeTypeT);  EEPROM.commit(); }
@@ -379,6 +379,8 @@ doc["heater4"] = climate4.heater;
 //doc["fan3"] = fan3;
 //doc["humidifier3"] = humidifier3;
 doc["saveInEEPROM"] = saveInEEPROM;
+doc["wifiID"] = wifiID;     // saved wifi network
+doc["wifiPASS"] = wifiPASS; // saved wifi password
 
 String data; // on the heap: a 2 kB array on the websocket task's stack risks a stack overflow
 size_t len = serializeJson(doc, data);

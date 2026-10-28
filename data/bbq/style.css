@@ -6,3 +6,8 @@
 
 .card h2 .icon-btn { width: 32px; height: 32px; border-radius: 10px; }
 .row .reading .value { font-variant-numeric: tabular-nums; }
+
+.timer-row { margin-top: 10px; border-top: 1px solid var(--border); padding-bottom: 0; }
+.timer-row .label { font-size: 0.9rem; color: var(--text-dim); }
+.timer-mini { color: var(--text); font-size: 1.15rem; font-variant-numeric: tabular-nums; margin-left: 4px; }
+.timer-btn { padding: 8px 12px; font-size: 0.85rem; }
